@@ -1,0 +1,408 @@
+using Supabase;
+using StEAM_.NET_main.Models;
+using Supabase.Postgrest;
+using static Supabase.Postgrest.Constants;
+
+namespace StEAM_.NET_main.Services;
+
+public class SupabaseService
+{
+    private volatile Supabase.Client? _client;
+    private readonly TaskCompletionSource _initTcs = new();
+    private readonly object _lock = new();
+    private Exception? _initException;
+
+    public Supabase.Client Client => _client
+        ?? throw new InvalidOperationException("Supabase not initialized. Call InitializeAsync first.");
+
+    public bool IsInitialized => _client != null;
+
+    /// <summary>Await this to wait until Supabase is ready (with 15s timeout).</summary>
+    public async Task WaitForInitializationAsync()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var tcs = _initTcs.Task;
+        var completed = await Task.WhenAny(tcs, Task.Delay(Timeout.Infinite, cts.Token));
+        if (completed != tcs)
+            throw new TimeoutException("Supabase initialization timed out after 15 seconds.");
+
+        if (_initException != null)
+            throw new InvalidOperationException("Supabase failed to initialize.", _initException);
+    }
+
+    /// <summary>Signal that initialization attempt is complete (success or failure).</summary>
+    public void SignalInitComplete(Exception? ex = null)
+    {
+        _initException = ex;
+        _initTcs.TrySetResult();
+    }
+
+    public async Task InitializeAsync()
+    {
+        var url = Environment.GetEnvironmentVariable("SUPABASE_URL")
+            ?? throw new InvalidOperationException("SUPABASE_URL environment variable is not set.");
+        var key = Environment.GetEnvironmentVariable("SUPABASE_KEY")
+            ?? throw new InvalidOperationException("SUPABASE_KEY environment variable is not set.");
+
+        var options = new SupabaseOptions 
+        { 
+            AutoRefreshToken = true,
+            SessionHandler = new CustomSessionPersistence()
+        };
+        var client = new Supabase.Client(url, key, options);
+        await client.InitializeAsync();
+
+        // Thread-safe assignment
+        lock (_lock) { _client = client; }
+
+        // Auto-save session on any auth state change (sign-in, token refresh, etc.)
+        client.Auth.AddStateChangedListener((_, state) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] Auth state changed: {state}");
+        });
+    }
+
+    public bool HasValidSession()
+    {
+        var session = _client?.Auth.CurrentSession;
+        if (session == null) return false;
+
+        // A session is valid if it has a refresh token — the library's
+        // AutoRefreshToken setting will renew the access token before API calls.
+        // Checking access token expiry here was too strict: after a cold start
+        // the access token is expired but the refresh token is still valid.
+        return !string.IsNullOrEmpty(session.RefreshToken);
+    }
+
+    /// <summary>
+    /// Clears all saved session data from the single persistence store.
+    /// </summary>
+    public void ClearSession()
+    {
+        var persistence = new CustomSessionPersistence();
+        persistence.DestroySession();
+    }
+
+    // --- Auth ---
+
+    public async Task SignInAsync(string email, string password)
+    {
+        await Client.Auth.SignIn(email, password);
+        // Session is auto-saved by CustomSessionPersistence via the library
+    }
+
+    public async Task SignOutAsync()
+    {
+        // Clear persisted session first so even if network call fails, local session is gone
+        ClearSession();
+
+        try
+        {
+            await Client.Auth.SignOut();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] SignOut network call failed (local session already cleared): {ex.Message}");
+        }
+    }
+
+    public string? GetCurrentUserId()
+    {
+        return Client.Auth.CurrentUser?.Id;
+    }
+
+    // --- User Details ---
+
+    public async Task<UserDetailsDto?> GetUserDetailsAsync()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return null;
+
+        try
+        {
+            var response = await Client.From<UserDetailsDto>()
+                .Filter("id", Operator.Equals, userId)
+                .Single();
+            return response;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetUserDetails error: {ex.Message}");
+            return null;
+        }
+    }
+
+    // --- Students ---
+
+    public async Task<StudentDto?> GetStudentAsync(string registerNumber)
+    {
+        try
+        {
+            var response = await Client.From<StudentDto>()
+                .Filter("register_number", Operator.Equals, registerNumber)
+                .Single();
+            return response;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetStudent error: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<StudentDto?> GetStudentByCardIdAsync(string cardId)
+    {
+        try
+        {
+            var response = await Client.From<StudentDto>()
+                .Filter("card_id", Operator.Equals, cardId)
+                .Single();
+            return response;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetStudentByCardId error: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Fetches multiple students by register numbers in a single query (avoids N+1).
+    /// </summary>
+    public async Task<List<StudentDto>> GetStudentsByRegNumbersAsync(IEnumerable<string> registerNumbers)
+    {
+        try
+        {
+            var regNos = registerNumbers.ToList();
+            if (regNos.Count == 0) return [];
+
+            // Use In filter to batch-fetch all students in one query
+            var response = await Client.From<StudentDto>()
+                .Filter("register_number", Operator.In, regNos)
+                .Get();
+            return response.Models;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetStudentsByRegNumbers error: {ex.Message}");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Assigns a card ID to a student by updating the students table.
+    /// </summary>
+    public async Task AssignCardIdAsync(string registerNumber, string cardId)
+    {
+        await Client.From<StudentDto>()
+            .Where(s => s.RegisterNumber == registerNumber)
+            .Set(s => s.CardId!, cardId)
+            .Update();
+    }
+
+    // --- Late Comings ---
+
+    public async Task<long> GetLateComeCountAsync(string registerNumber)
+    {
+        try
+        {
+            // Note: Count(CountType.Exact) causes PGRST204 on this table,
+            // so we fetch minimal data (just register_number) and count client-side
+            var response = await Client.From<LateComingDto>()
+                .Select("register_number")
+                .Filter("register_number", Operator.Equals, registerNumber)
+                .Get();
+            return response.Models.Count;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetLateComeCount error: {ex.Message}");
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Checks if a student has already been marked late today.
+    /// Throws on error so the caller can distinguish network failure from "already entered".
+    /// </summary>
+    public async Task<bool> CheckAlreadyEnteredAsync(string registerNumber, DateOnly date)
+    {
+        try
+        {
+            var response = await Client.From<LateComingDto>()
+                .Filter("register_number", Operator.Equals, registerNumber)
+                .Filter("date", Operator.Equals, date.ToString("yyyy-MM-dd"))
+                .Get();
+            return response.Models.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] CheckAlreadyEntered error: {ex.Message}");
+            throw; // Let caller decide how to handle — do not swallow as "already entered"
+        }
+    }
+
+    public async Task InsertLateComingAsync(string registerNumber, DateOnly date, TimeOnly time)
+    {
+        var userId = GetCurrentUserId()
+            ?? throw new InvalidOperationException("User not authenticated");
+
+        var dto = new LateComingDto
+        {
+            RegisterNumber = registerNumber,
+            Date = date.ToString("yyyy-MM-dd"),
+            Time = time.ToString("HH:mm:ss"),
+            RegisteredBy = userId
+        };
+
+        await Client.From<LateComingDto>().Insert(dto);
+    }
+
+    // --- Lookups ---
+
+    public async Task<List<string>> GetDepartmentsAsync()
+    {
+        try
+        {
+            var response = await Client.From<DepartmentDto>().Get();
+            return response.Models.Select(d => d.Department).ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetDepartments error: {ex.Message}");
+            return [];
+        }
+    }
+
+    public async Task<List<string>> GetCoursesAsync()
+    {
+        try
+        {
+            var response = await Client.From<CourseDto>().Get();
+            return response.Models.Select(c => c.Course).ToList();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetCourses error: {ex.Message}");
+            return [];
+        }
+    }
+
+    // --- Filtered Data (Staff Dashboard) ---
+
+    public async Task<List<LateComingDto>> GetDataAsync(
+        DateOnly startDate,
+        DateOnly endDate,
+        string registerNumber = "",
+        string department = "",
+        string course = "",
+        int? batch = null,
+        string section = "",
+        string name = "")
+    {
+        try
+        {
+            var query = Client.From<LateComingDto>()
+                .Filter("date", Operator.GreaterThanOrEqual, startDate.ToString("yyyy-MM-dd"))
+                .Filter("date", Operator.LessThanOrEqual, endDate.ToString("yyyy-MM-dd"));
+
+            if (!string.IsNullOrEmpty(registerNumber))
+                query = query.Filter("register_number", Operator.ILike, $"%{registerNumber}%");
+
+            // Note: department, course, batch, section, name filters are applied
+            // client-side in GetDataWithStudentsAsync because supabase-csharp
+            // doesn't support cross-table filtering without joins/views.
+
+            var response = await query
+                .Order("register_number", Ordering.Ascending)
+                .Order("date", Ordering.Ascending)
+                .Get();
+
+            return response.Models;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetData error: {ex.Message}");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Gets filtered late-coming data with student details for the staff dashboard.
+    /// Uses batch-fetch for students to avoid N+1 query problem.
+    /// </summary>
+    public async Task<List<(Student Student, DateOnly Date, TimeOnly Time)>> GetDataWithStudentsAsync(
+        DateOnly startDate,
+        DateOnly endDate,
+        string registerNumber = "",
+        string department = "",
+        string course = "",
+        int? batch = null,
+        string section = "",
+        string name = "")
+    {
+        try
+        {
+            var lateComings = await GetDataAsync(startDate, endDate, registerNumber, department, course, batch, section, name);
+            var result = new List<(Student, DateOnly, TimeOnly)>();
+
+            // Batch-fetch all students in one query instead of N+1
+            var regNos = lateComings.Select(l => l.RegisterNumber).Distinct().ToList();
+            var studentDtos = await GetStudentsByRegNumbersAsync(regNos);
+            var studentMap = studentDtos.ToDictionary(s => s.RegisterNumber);
+
+            // Apply client-side filters and build result
+            var filteredStudents = new Dictionary<string, StudentDto>();
+            foreach (var kvp in studentMap)
+            {
+                var student = kvp.Value;
+
+                if (!string.IsNullOrEmpty(department) &&
+                    !student.Department.Equals(department, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!string.IsNullOrEmpty(course) &&
+                    !student.Course.Equals(course, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (batch.HasValue && student.Batch != batch.Value)
+                    continue;
+                if (!string.IsNullOrEmpty(section) &&
+                    !student.Section.Equals(section, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!string.IsNullOrEmpty(name) &&
+                    !student.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                filteredStudents[kvp.Key] = student;
+            }
+
+            foreach (var lc in lateComings)
+            {
+                if (filteredStudents.TryGetValue(lc.RegisterNumber, out var studentDto))
+                {
+                    var student = new Student(
+                        studentDto.RegisterNumber,
+                        studentDto.Name,
+                        studentDto.Course,
+                        studentDto.Batch,
+                        studentDto.Department,
+                        studentDto.Specialization,
+                        studentDto.Section
+                    );
+
+                    result.Add((
+                        student,
+                        DateOnly.Parse(lc.Date),
+                        TimeOnly.Parse(lc.Time)
+                    ));
+                }
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetDataWithStudents error: {ex.Message}");
+            return [];
+        }
+    }
+}

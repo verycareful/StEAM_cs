@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="StEAM_.NET_main.Pages.LoadingPage"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{DynamicResource Primary}">
+
+    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="20">
+        <Label Text="StEAM"
+               FontSize="36"
+               FontFamily="Inter"
+               FontAttributes="Bold"
+               TextColor="White"
+               HorizontalOptions="Center" />
+        <ActivityIndicator IsRunning="True"
+                           Color="White"
+                           HeightRequest="40"
+                           WidthRequest="40" />
+    </VerticalStackLayout>
+
+</ContentPage>

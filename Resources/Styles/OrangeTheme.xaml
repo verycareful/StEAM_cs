@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Orange Theme Accent Colors -->
+    <Color x:Key="Primary">#E65100</Color>
+    <Color x:Key="PrimaryDark">#BF360C</Color>
+    <Color x:Key="PrimaryLight">#FF8A65</Color>
+    <Color x:Key="Secondary">#F4511E</Color>
+    <Color x:Key="Accent">#FF5722</Color>
+
+    <!-- Surface Colors - Light -->
+    <Color x:Key="SurfaceLight">#FFFAF5</Color>
+    <Color x:Key="SurfaceVariantLight">#FBE9E7</Color>
+    <Color x:Key="CardBackgroundLight">#FFFFFF</Color>
+    <Color x:Key="OnSurfaceLight">#1C1B1F</Color>
+    <Color x:Key="OnSurfaceVariantLight">#49454F</Color>
+
+    <!-- Surface Colors - Dark -->
+    <Color x:Key="SurfaceDark">#121212</Color>
+    <Color x:Key="SurfaceVariantDark">#3E2723</Color>
+    <Color x:Key="CardBackgroundDark">#1E1E1E</Color>
+    <Color x:Key="OnSurfaceDark">#E6E1E5</Color>
+    <Color x:Key="OnSurfaceVariantDark">#CAC4D0</Color>
+
+    <Color x:Key="OnPrimary">#FFFFFF</Color>
+    <Color x:Key="Error">#B3261E</Color>
+    <Color x:Key="Success">#2E7D32</Color>
+
+</ResourceDictionary>

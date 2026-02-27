@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="StEAM_.NET_main.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:pages="clr-namespace:StEAM_.NET_main.Pages"
+    Title="StEAM"
+    FlyoutBehavior="Disabled">
+
+    <ShellContent
+        x:Name="LoadingContent"
+        Title="Loading"
+        Route="LoadingPage" />
+
+    <ShellContent
+        x:Name="LoginContent"
+        Title="Login"
+        Route="LoginPage" />
+
+</Shell>

@@ -1,0 +1,70 @@
+## Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bld/
+[Bb]uild/
+
+## Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.csproj.user
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## MSBuild
+*.log
+msbuild.wrn
+msbuild.err
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+
+## macOS
+.DS_Store
+
+## Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+## Secrets and environment files
+*.env
+supabase.env
+Resources/Raw/supabase.env
+
+## Test results
+TestResults/
+[Tt]est[Rr]esult*/
+
+## Publish output
+publish/
+PublishProfiles/
+
+## MAUI / Android generated
+*.apk
+*.aab
+*.ipa
+
+## Code analysis
+StyleCopReport.xml
+
+## Misc
+*.tmp
+*.bak
+*.swp
+*~

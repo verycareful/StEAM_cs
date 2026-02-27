@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:StEAM_.NET_main.ViewModels"
+             x:Class="StEAM_.NET_main.Pages.FloorStaffPage"
+             x:DataType="vm:FloorStaffViewModel"
+             Title="Floor Staff"
+             BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceLight}, Dark={StaticResource SurfaceDark}}">
+
+    <Shell.TitleView>
+        <Grid ColumnDefinitions="*,Auto" Padding="0,0,8,0">
+            <Label Text="Floor Staff" FontSize="20" FontAttributes="Bold"
+                   VerticalOptions="Center"
+                   TextColor="{StaticResource Primary}" />
+            <Button Grid.Column="1" Text="⚙"
+                         Command="{Binding OpenSettingsCommand}"
+                         BackgroundColor="Transparent"
+                         TextColor="{StaticResource Primary}"
+                         FontSize="22" Padding="0"
+                         HeightRequest="36" WidthRequest="36"
+                         VerticalOptions="Center" />
+        </Grid>
+    </Shell.TitleView>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <!-- Quick Access Cards -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+
+                <!-- Camera Card -->
+                <Frame Grid.Column="0"
+                       BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                       CornerRadius="8" Padding="0" BorderColor="Transparent" HasShadow="True">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenCameraScanCommand}" />
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="8" VerticalOptions="Center" HorizontalOptions="Center">
+                        <Label Text="CAM" FontSize="28" FontAttributes="Bold" HorizontalTextAlignment="Center" TextColor="{StaticResource Primary}" />
+                        <Label Text="Camera" FontSize="16" FontAttributes="Bold"
+                               HorizontalTextAlignment="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                        <Label Text="Barcode / OCR" FontSize="12"
+                               HorizontalTextAlignment="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- NFC Card -->
+                <Frame Grid.Column="1"
+                       BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                       CornerRadius="8" Padding="0" BorderColor="Transparent" HasShadow="True">
+                    <Frame.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenNfcScanCommand}" />
+                    </Frame.GestureRecognizers>
+                    <VerticalStackLayout Padding="20" Spacing="8" VerticalOptions="Center" HorizontalOptions="Center">
+                        <Label Text="NFC" FontSize="28" FontAttributes="Bold" HorizontalTextAlignment="Center" TextColor="{StaticResource Primary}" />
+                        <Label Text="NFC" FontSize="16" FontAttributes="Bold"
+                               HorizontalTextAlignment="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                        <Label Text="Tap card to scan" FontSize="12"
+                               HorizontalTextAlignment="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    </VerticalStackLayout>
+                </Frame>
+            </Grid>
+
+            <!-- Divider -->
+            <Grid ColumnDefinitions="*,Auto,*" Margin="0,4">
+                <BoxView Grid.Column="0" HeightRequest="1" Color="{StaticResource Primary}" Opacity="0.2" VerticalOptions="Center" />
+                <Label Grid.Column="1" Text="or enter manually" FontSize="13" Margin="12,0"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                <BoxView Grid.Column="2" HeightRequest="1" Color="{StaticResource Primary}" Opacity="0.2" VerticalOptions="Center" />
+            </Grid>
+
+            <!-- Manual Entry -->
+            <Frame BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                   CornerRadius="8" Padding="16" BorderColor="Transparent" HasShadow="True">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Register Number" FontSize="14" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <Entry Grid.Column="0" Text="{Binding RegisterNumber}"
+                               Placeholder="Enter register number"
+                               ReturnType="Search" ClearButtonVisibility="WhileEditing" />
+                        <Button Grid.Column="1" Text="Search"
+                                Command="{Binding SearchCommand}"
+                                BackgroundColor="{StaticResource Primary}"
+                                TextColor="{StaticResource OnPrimary}"
+                                CornerRadius="6" HeightRequest="44" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Loading -->
+            <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}"
+                               Color="{StaticResource Primary}" HorizontalOptions="Center" />
+
+            <!-- Student Details Card -->
+            <Frame IsVisible="{Binding HasStudent}"
+                   BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                   CornerRadius="8" Padding="20" BorderColor="Transparent" HasShadow="True">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{Binding StudentName}" FontSize="24" FontAttributes="Bold" />
+                    <Label Text="{Binding StudentDepartment}" FontSize="15"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    <Label Text="{Binding StudentCourse}" FontSize="15"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    <Label Text="{Binding StudentSection}" FontSize="15"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    <BoxView HeightRequest="1" Color="{StaticResource Primary}" Opacity="0.3" Margin="0,8" />
+                    <Label Text="{Binding LateCountText}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
+
+                    <HorizontalStackLayout Spacing="8" Margin="0,8,0,0">
+                        <Label Text="Time:" VerticalOptions="Center" FontSize="15" />
+                        <TimePicker Time="{Binding SelectedTime}" TextColor="{StaticResource Primary}" />
+                    </HorizontalStackLayout>
+
+                    <Button Text="Submit Late Coming" Command="{Binding SubmitCommand}"
+                            BackgroundColor="{StaticResource Primary}" TextColor="{StaticResource OnPrimary}"
+                            FontAttributes="Bold" CornerRadius="8" HeightRequest="48" Margin="0,8,0,0" />
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

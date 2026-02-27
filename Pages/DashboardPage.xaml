@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:StEAM_.NET_main.ViewModels"
+             x:Class="StEAM_.NET_main.Pages.DashboardPage"
+             x:DataType="vm:DashboardViewModel"
+             Title="Today's Dashboard"
+             BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceLight}, Dark={StaticResource SurfaceDark}}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <!-- Date Header -->
+            <Frame BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                   CornerRadius="8" Padding="16" BorderColor="Transparent" HasShadow="True">
+                <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                    <Label Text="{Binding DateDisplay}"
+                           FontSize="18" FontAttributes="Bold"
+                           HorizontalTextAlignment="Center"
+                           TextColor="{StaticResource Primary}" />
+                    <Label HorizontalTextAlignment="Center"
+                           FontSize="14"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="{Binding TotalLateToday}" FontAttributes="Bold" />
+                                <Span Text=" students late today" />
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Loading -->
+            <ActivityIndicator IsRunning="{Binding IsLoading}"
+                               IsVisible="{Binding IsLoading}"
+                               Color="{StaticResource Primary}"
+                               HorizontalOptions="Center" />
+
+            <!-- Error -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource Error}"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}"
+                   HorizontalTextAlignment="Center" />
+
+            <!-- No Data -->
+            <Frame IsVisible="{Binding HasData, Converter={StaticResource InvertedBoolConverter}}"
+                   BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                   CornerRadius="8" Padding="24" BorderColor="Transparent">
+                <Label Text="No late students recorded today."
+                       HorizontalTextAlignment="Center"
+                       FontSize="15"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+            </Frame>
+
+            <!-- Late Students List -->
+            <CollectionView ItemsSource="{Binding LateStudents}"
+                            IsVisible="{Binding HasData}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DashboardEntry">
+                        <Frame BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                               CornerRadius="8" Padding="16" BorderColor="Transparent" HasShadow="True"
+                               Margin="0,4">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                <Label Text="{Binding StudentName}"
+                                       FontSize="16" FontAttributes="Bold"
+                                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                                <Label Grid.Column="1"
+                                       Text="{Binding Time}"
+                                       FontSize="14" FontAttributes="Bold"
+                                       TextColor="{StaticResource Primary}"
+                                       VerticalOptions="Center" />
+                                <HorizontalStackLayout Grid.Row="1" Spacing="8">
+                                    <Label Text="{Binding RegisterNumber}"
+                                           FontSize="13"
+                                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                                    <Label Text="·" FontSize="13"
+                                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                                    <Label Text="{Binding Department}"
+                                           FontSize="13"
+                                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:StEAM_.NET_main.ViewModels"
+             x:Class="StEAM_.NET_main.Pages.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Title="Settings"
+             BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceLight}, Dark={StaticResource SurfaceDark}}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="20">
+
+            <!-- Profile Section -->
+            <Frame BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                   CornerRadius="8" Padding="20" BorderColor="Transparent" HasShadow="True">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Profile" FontSize="18" FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}" />
+                    <BoxView HeightRequest="1" Color="{StaticResource Primary}" Opacity="0.2" Margin="0,4" />
+                    <Label Text="{Binding UserName}" FontSize="16" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                    <Label Text="{Binding UserEmail}" FontSize="14"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    <Label Text="{Binding UserRole, StringFormat='Role: {0}'}" FontSize="14"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Theme Section -->
+            <Frame BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                   CornerRadius="8" Padding="20" BorderColor="Transparent" HasShadow="True">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Appearance" FontSize="18" FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}" />
+                    <BoxView HeightRequest="1" Color="{StaticResource Primary}" Opacity="0.2" Margin="0,2" />
+
+                    <Label Text="Theme Mode" FontSize="15" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                        <RadioButton Grid.Column="0" Content="System"
+                                     IsChecked="{Binding SelectedThemeIndex, Converter={StaticResource IndexToBoolConverter}, ConverterParameter=0}"
+                                     GroupName="Theme" />
+                        <RadioButton Grid.Column="1" Content="Light"
+                                     IsChecked="{Binding SelectedThemeIndex, Converter={StaticResource IndexToBoolConverter}, ConverterParameter=1}"
+                                     GroupName="Theme" />
+                        <RadioButton Grid.Column="2" Content="Dark"
+                                     IsChecked="{Binding SelectedThemeIndex, Converter={StaticResource IndexToBoolConverter}, ConverterParameter=2}"
+                                     GroupName="Theme" />
+                    </Grid>
+
+                    <Label Text="Accent Color" FontSize="15" FontAttributes="Bold" Margin="0,8,0,0"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                    <HorizontalStackLayout Spacing="16" HorizontalOptions="Center">
+                        <Label Text="Blue" FontSize="15" VerticalOptions="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                        <Switch IsToggled="{Binding IsOrangeAccent}"
+                                OnColor="#E65100"
+                                ThumbColor="{StaticResource Primary}" />
+                        <Label Text="Orange" FontSize="15" VerticalOptions="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Actions Section -->
+            <Frame BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                   CornerRadius="8" Padding="4" BorderColor="Transparent" HasShadow="True">
+                <VerticalStackLayout Spacing="0">
+                    <!-- Report Issue -->
+                    <Button Text="⚑ Report an Issue"
+                            Command="{Binding ReportIssueCommand}"
+                            BackgroundColor="Transparent"
+                            TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}"
+                            FontSize="15"
+                            HorizontalOptions="Fill"
+                            Padding="16,14" />
+                    <BoxView HeightRequest="1" Color="{StaticResource Primary}" Opacity="0.1" />
+                    <!-- Sign Out -->
+                    <Button Text="⏻ Sign Out"
+                            Command="{Binding SignOutCommand}"
+                            BackgroundColor="Transparent"
+                            TextColor="{StaticResource Error}"
+                            FontSize="15"
+                            FontAttributes="Bold"
+                            HorizontalOptions="Fill"
+                            Padding="16,14" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- About Section -->
+            <Frame BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                   CornerRadius="8" Padding="20" BorderColor="Transparent" HasShadow="True">
+                <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                    <Label Text="StEAM" FontSize="18" FontAttributes="Bold"
+                           HorizontalTextAlignment="Center"
+                           TextColor="{StaticResource Primary}" />
+                    <Label Text="Student Time &amp; Attendance Manager"
+                           FontSize="13" HorizontalTextAlignment="Center"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    <Label Text="Sudarshan SR (RA2411003040001)"
+                           FontSize="12" HorizontalTextAlignment="Center"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    <Label Text="Sricharan Suresh (RA2311003040063)"
+                           FontSize="12" HorizontalTextAlignment="Center"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                    <Label Text="DCSE, SRM IST Vadapalani"
+                           FontSize="12" HorizontalTextAlignment="Center"
+                           TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

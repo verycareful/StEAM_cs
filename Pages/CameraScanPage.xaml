@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:StEAM_.NET_main.ViewModels"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
+             x:Class="StEAM_.NET_main.Pages.CameraScanPage"
+             x:DataType="vm:CameraScanViewModel"
+             Title="Camera Scan"
+             BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceLight}, Dark={StaticResource SurfaceDark}}">
+
+    <Shell.TitleView>
+        <Label Text="Camera Scan" FontSize="20" FontAttributes="Bold"
+               VerticalOptions="Center" TextColor="{StaticResource Primary}" />
+    </Shell.TitleView>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Mode Toggle with highlighting -->
+        <Frame Grid.Row="0" Margin="16,16,16,0"
+               BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+               CornerRadius="8" Padding="8" BorderColor="Transparent" HasShadow="True">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button Grid.Column="0" Text="Barcode"
+                        Command="{Binding SetModeCommand}" CommandParameter="Barcode"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="{StaticResource OnPrimary}"
+                        Opacity="{Binding IsBarcodeMode, Converter={StaticResource BoolToOpacityConverter}}"
+                        CornerRadius="6" FontSize="14" FontAttributes="Bold" />
+                <Button Grid.Column="1" Text="OCR"
+                        Command="{Binding SetModeCommand}" CommandParameter="OCR"
+                        BackgroundColor="{StaticResource Secondary}"
+                        TextColor="{StaticResource OnPrimary}"
+                        Opacity="{Binding IsOcrMode, Converter={StaticResource BoolToOpacityConverter}}"
+                        CornerRadius="6" FontSize="14" FontAttributes="Bold" />
+            </Grid>
+        </Frame>
+
+        <!-- Scanner Area -->
+        <Grid Grid.Row="1" Margin="16,8">
+
+            <!-- Barcode mode: live ZXing camera with auto-detect -->
+            <Grid IsVisible="{Binding IsBarcodeMode}">
+                <zxing:CameraBarcodeReaderView
+                    x:Name="BarcodeReader"
+                    IsDetecting="True"
+                    CameraLocation="Rear"
+                    VerticalOptions="Fill"
+                    HorizontalOptions="Fill" />
+                <Frame BackgroundColor="#80000000" CornerRadius="8"
+                       Padding="12" HasShadow="False" BorderColor="Transparent"
+                       VerticalOptions="End" HorizontalOptions="Center" Margin="0,0,0,16">
+                    <Label Text="Point camera at barcode — scanning automatically"
+                           TextColor="White" FontSize="13" HorizontalTextAlignment="Center" />
+                </Frame>
+            </Grid>
+
+            <!-- OCR mode: instructions + capture button -->
+            <VerticalStackLayout IsVisible="{Binding IsOcrMode}"
+                                 VerticalOptions="Center" HorizontalOptions="Center" Spacing="20"
+                                 Padding="24">
+                <Label Text="Capture ID Card" FontSize="22" FontAttributes="Bold"
+                       HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+                <Label Text="Take a photo of the student's ID card. The register number will be extracted automatically."
+                       FontSize="14" HorizontalTextAlignment="Center"
+                       TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                <Button Text="Take Photo"
+                        Clicked="OnOcrCaptureClicked"
+                        BackgroundColor="{StaticResource Secondary}"
+                        TextColor="{StaticResource OnPrimary}"
+                        CornerRadius="12" HeightRequest="56" FontSize="18" FontAttributes="Bold"
+                        HorizontalOptions="Center" WidthRequest="220"
+                        IsEnabled="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}" />
+                <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}"
+                                   Color="{StaticResource Primary}" HorizontalOptions="Center" />
+                <Label Text="{Binding PopupMessage}" FontSize="13"
+                       HorizontalTextAlignment="Center" IsVisible="{Binding PopupMessage, Converter={StaticResource IsNotNullConverter}}"
+                       TextColor="{StaticResource Primary}" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Bottom Panel: Student Details -->
+        <ScrollView Grid.Row="2" MaximumHeightRequest="300">
+            <VerticalStackLayout Padding="16,8,16,16" Spacing="12">
+
+                <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}"
+                                   Color="{StaticResource Primary}" HorizontalOptions="Center" />
+
+                <Frame IsVisible="{Binding HasStudent}"
+                       BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}"
+                       CornerRadius="8" Padding="16" BorderColor="Transparent" HasShadow="True">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="{Binding StudentName}" FontSize="20" FontAttributes="Bold" />
+                        <Label Text="{Binding StudentDepartment}" FontSize="14"
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                        <Label Text="{Binding StudentCourse}" FontSize="14"
+                               TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+                        <BoxView HeightRequest="1" Color="{StaticResource Primary}" Opacity="0.3" Margin="0,4" />
+                        <Label Text="{Binding LateCountText}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
+
+                        <Button Text="Submit Late Coming" Command="{Binding SubmitCommand}"
+                                BackgroundColor="{StaticResource Primary}" TextColor="{StaticResource OnPrimary}"
+                                FontAttributes="Bold" CornerRadius="8" HeightRequest="44" Margin="0,4,0,0" />
+                    </VerticalStackLayout>
+                </Frame>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+    </Grid>
+</ContentPage>

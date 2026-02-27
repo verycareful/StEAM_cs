@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:StEAM_.NET_main.ViewModels"
+             x:Class="StEAM_.NET_main.Pages.RoleSelectorPage"
+             x:DataType="vm:RoleSelectorViewModel"
+             Title="StEAM"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="{AppThemeBinding Light={StaticResource SurfaceLight}, Dark={StaticResource SurfaceDark}}">
+
+    <Grid RowDefinitions="*" Padding="24">
+
+        <!-- Loading -->
+        <ActivityIndicator IsRunning="{Binding IsLoading}"
+                           IsVisible="{Binding IsLoading}"
+                           Color="{StaticResource Primary}"
+                           VerticalOptions="Center" HorizontalOptions="Center" />
+
+        <!-- Content -->
+        <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="16"
+                             IsVisible="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}">
+
+            <Label Text="{Binding WelcomeMessage}"
+                   FontSize="28" FontAttributes="Bold"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
+
+            <Label Text="{Binding RoleDisplay}"
+                   FontSize="16"
+                   HorizontalTextAlignment="Center"
+                   TextColor="{AppThemeBinding Light={StaticResource OnSurfaceVariantLight}, Dark={StaticResource OnSurfaceVariantDark}}" />
+
+            <!-- Error Label -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource Error}"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource IsNotNullConverter}}"
+                   FontSize="14"
+                   HorizontalTextAlignment="Center" />
+
+            <Button Text="{Binding ButtonText}"
+                    Command="{Binding ContinueCommand}"
+                    IsVisible="{Binding HasDetails}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="{StaticResource OnPrimary}"
+                    FontAttributes="Bold"
+                    CornerRadius="8"
+                    HeightRequest="48"
+                    Margin="0,8,0,0" />
+
+            <Button Text="View Today's Dashboard"
+                    Command="{Binding OpenDashboardCommand}"
+                    IsVisible="{Binding HasDetails}"
+                    BackgroundColor="{StaticResource Secondary}"
+                    TextColor="{StaticResource OnPrimary}"
+                    CornerRadius="8"
+                    HeightRequest="44" />
+
+            <Button Text="Settings"
+                    Command="{Binding OpenSettingsCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource Primary}"
+                    FontAttributes="Bold"
+                    CornerRadius="8"
+                    HeightRequest="44" />
+
+        </VerticalStackLayout>
+
+    </Grid>
+</ContentPage>
