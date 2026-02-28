@@ -120,13 +120,33 @@ public partial class CameraScanPage : ContentPage
         }
     }
 
+    protected override void OnNavigatingFrom(NavigatingFromEventArgs args)
+    {
+        base.OnNavigatingFrom(args);
+        
+        // Stop detection and unsubscribe early before UI transition
+        BarcodeReader.IsDetecting = false;
+        BarcodeReader.BarcodesDetected -= OnBarcodesDetected;
+
+        try
+        {
+#if ANDROID
+            if (BarcodeReader.Handler is Platforms.Android.MauiCameraViewHandler customHandler)
+            {
+                // Force synchronous teardown before allowing navigation to complete
+                Task.Run(async () => await customHandler.StopCameraAsync()).Wait();
+            }
+#endif
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error stopping camera synchronously: {ex.Message}");
+        }
+    }
+
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-
-        // Stop detection and unsubscribe
-        BarcodeReader.IsDetecting = false;
-        BarcodeReader.BarcodesDetected -= OnBarcodesDetected;
 
         // Fully release the camera hardware so it doesn't interfere with NFC
         try

@@ -68,3 +68,7 @@ StyleCopReport.xml
 *.bak
 *.swp
 *~
+
+## Logs
+logcat.txt
+filtered_logs.txt

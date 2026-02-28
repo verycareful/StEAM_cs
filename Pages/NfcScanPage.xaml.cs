@@ -20,15 +20,6 @@ public partial class NfcScanPage : ContentPage
         // Subscribe to popup messages (fresh subscription each time)
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
-        // Poll until the camera handler is fully released (max 3 seconds)
-        // Fixed delay was unreliable on slower devices where Camera2 teardown takes longer
-        int waited = 0;
-        while (waited < 3000)
-        {
-            await Task.Delay(200);
-            waited += 200;
-        }
-
         await _viewModel.StartListeningAsync();
     }
 

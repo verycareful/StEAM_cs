@@ -204,11 +204,15 @@ The application loads Supabase configuration from a `supabase.env` file bundled 
 Do not commit the `supabase.env` file to version control. It is excluded by the `.gitignore`.
 
 
-## Known Issues
+## Troubleshooting & Architecture Notes
 
-- **Session persistence**: Session restore after a cold start may occasionally fail, requiring the user to sign in again. The access token may be expired on cold start, and although the library should auto-refresh via the refresh token, edge cases exist where the refresh silently fails.
-- **NFC unavailable after camera use**: After opening the camera scanner (CameraScanPage), the NFC adapter may stop responding to tag reads until the application is fully restarted. This is a platform-level resource conflict between the camera subsystem and the NFC adapter on certain Android devices.
+### Camera2 and NFC Hardware Deadlocks
+On some Android devices (specifically Samsung), the `CameraService` suppresses NFC polling whenever a `CameraCaptureSession` is active. To prevent the NFC adapter from entering a locked "abandoned buffer" state due to race conditions during page navigation, StEAM uses a custom `MauiCameraViewHandler` (found in `Platforms/Android/`). 
 
+If you modify the ZXing scanner initialization, ensure you do not break the synchronous `StopCameraAsync()` tear-down block invoked in `CameraScanPage.xaml.cs`. This block explicitly waits for the `CAMERA_STATE_CLOSED` broadcast from the Android framework before destroying the `SurfaceView`.
+
+### Cold Start Storage
+Session persistence relies on secure local storage. If token-refresh issues occur on cold start, verify that the `CustomSessionPersistence` implementation isn't faulting due to OS-level keychain restrictions (frequent on un-provisioned iOS simulators).
 
 ## License
 

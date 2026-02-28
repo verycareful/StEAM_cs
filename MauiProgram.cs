@@ -17,6 +17,12 @@ public static class MauiProgram
             .UseMauiCommunityToolkit()
             .UseOcr()
             .UseBarcodeReader()
+            .ConfigureMauiHandlers(handlers =>
+            {
+#if ANDROID
+                handlers.AddHandler(typeof(ZXing.Net.Maui.Controls.CameraBarcodeReaderView), typeof(StEAM_.NET_main.Platforms.Android.MauiCameraViewHandler));
+#endif
+            })
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("Inter-Variable.ttf", "Inter");

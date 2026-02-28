@@ -285,8 +285,8 @@ public partial class NfcScanViewModel : ObservableObject
             return;
         }
 
-        // Use retry-based start to handle camera hardware release timing
-        await _nfcService.StartListeningWithRetryAsync(maxRetries: 3, delayMs: 500);
+        // Start listening directly since the camera is synchronously torn down
+        _nfcService.StartListening();
         IsNfcListening = _nfcService.IsListening;
         NfcStatusText = CurrentMode switch
         {

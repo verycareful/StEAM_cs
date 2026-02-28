@@ -56,12 +56,14 @@ public class NfcService
 
         try
         {
-            // Always do a clean stop first to reset any stale state
-            // (e.g. after camera use that may have interfered with the NFC adapter)
-            ForceStopClean();
+            // CrossNFC.OnResume() re-initializes the plugin's internal adapter connection.
+            // MainActivity.OnResume only fires when returning from background — it does NOT
+            // fire for in-process MAUI Shell navigation (e.g. camera page → back → NFC page).
+            // Calling it here every time StartListening is called is safe and necessary.
+            CrossNFC.OnResume();
 
-            // Note: CrossNFC.OnResume() is called in MainActivity.OnResume — 
-            // do NOT call it here (calling it multiple times corrupts internal state)
+            // Always do a clean stop first to reset any stale state
+            ForceStopClean();
 
             CrossNFC.Current.OnMessageReceived -= OnNfcMessageReceived;
             CrossNFC.Current.OnMessageReceived += OnNfcMessageReceived;
