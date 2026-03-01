@@ -7,6 +7,18 @@ A cross-platform .NET MAUI application for tracking student late arrivals on cam
 
 StEAM is used by university floor staff to record students who arrive late and by administrative staff to review, filter, and analyze late-arrival data across departments, courses, batches, and sections. Students are identified by register number entered manually, by tapping their NFC-enabled MIFARE Classic 4K ID card, or by scanning their ID card with the device camera.
 
+**Current Version:** 1.1.2 (2026-03-01) — See [CHANGELOG.md](CHANGELOG.md) for details.
+
+**Key Improvements in v1.1.2:**
+- Critical multi-core thread-safety fix for NFC tag reading (`volatile` keyword on `LastNfcTag`)
+- Double-entry prevention in NFC Turbo mode using atomic compare-exchange
+- Enhanced error handling and user feedback for failed submissions
+- Smart typeahead search on FloorStaffPage with live suggestions (register number + name matching)
+- Performance optimization: NFC late-count queries now use server-side RPC instead of fetching all rows
+- UI improvements: visual distinction of Turbo mode with red styling and active banner
+- Observable collection thread-safety improvement in `RecentEntriesService`
+
+See the [CHANGELOG.md](CHANGELOG.md) for the complete list of fixes and improvements across all releases.
 
 ## Features
 
@@ -208,6 +220,23 @@ Do not commit the `supabase.env` file to version control. It is excluded by the 
 
 
 ## Troubleshooting & Architecture Notes
+
+### Supabase RPC Setup (v1.1.2+)
+To enable the optimized late-count query, create the following RPC function in your Supabase project's SQL editor:
+
+```sql
+CREATE OR REPLACE FUNCTION get_late_count(p_register_number character varying)
+RETURNS integer
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT COUNT(*)::integer
+  FROM late_comings
+  WHERE register_number = p_register_number;
+$$;
+```
+
+This function counts late arrivals for a student server-side (no row transfer), replacing the previous client-side approach. If the function does not exist, the client gracefully falls back to returning 0.
 
 ### NFC — MIFARE Classic Block Reading
 NFC identification reads Sector 0, Blocks 1–2 directly from the student's MIFARE Classic 4K card. The register number is stored on the card as a null-terminated ASCII string. `Plugin.MAUI.NFC`'s `ITagInfo` abstraction does not expose the native Android `Tag` object needed for authenticated MIFARE reads; the workaround is a `static LastNfcTag` property on `MainActivity` populated in `OnNewIntent`, which `NfcService` reads before performing block I/O.

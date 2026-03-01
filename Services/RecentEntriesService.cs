@@ -13,6 +13,7 @@ public class RecentEntriesService
 
     /// <summary>
     /// Adds a new entry at the top of the list (newest first).
+    /// Dispatches to main thread to ensure ObservableCollection safety.
     /// </summary>
     public void AddEntry(Student student, IdentificationMethod method)
     {
@@ -22,7 +23,7 @@ public class RecentEntriesService
             Method = method,
             Timestamp = DateTime.Now
         };
-        Entries.Insert(0, entry);
+        MainThread.BeginInvokeOnMainThread(() => Entries.Insert(0, entry));
     }
 
     /// <summary>

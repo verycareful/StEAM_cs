@@ -41,7 +41,6 @@ public partial class CameraScanViewModel : ObservableObject
     [ObservableProperty] private Student? _student;
     [ObservableProperty] private bool _hasStudent;
     [ObservableProperty] private long _lateCount;
-    [ObservableProperty] private TimeSpan _selectedTime = DateTime.Now.TimeOfDay;
 
     // Track which method identified this student
     private Models.IdentificationMethod _studentIdentificationMethod = Models.IdentificationMethod.Barcode;

@@ -197,7 +197,9 @@ public class NfcService
                 mifare.Connect();
 
                 // Authenticate Sector 0 with factory default Key A (FF FF FF FF FF FF)
-                bool auth = mifare.AuthenticateSectorWithKeyA(0, MifareClassic.KeyDefault?.ToArray());
+                var defaultKey = MifareClassic.KeyDefault?.ToArray()
+                    ?? new byte[] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+                bool auth = mifare.AuthenticateSectorWithKeyA(0, defaultKey);
                 if (!auth)
                 {
                     ErrorOccurred?.Invoke("Card authentication failed.");

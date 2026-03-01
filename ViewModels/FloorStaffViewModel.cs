@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StEAM_.NET_main.Models;
 using StEAM_.NET_main.Services;
+using System.Collections.ObjectModel;
 
 namespace StEAM_.NET_main.ViewModels;
 
@@ -26,11 +27,15 @@ public partial class FloorStaffViewModel : ObservableObject
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string? _popupMessage;
     [ObservableProperty] private bool _hasStudent;
-    [ObservableProperty] private TimeSpan _selectedTime = DateTime.Now.TimeOfDay;
 
     // Recent entries (shared singleton)
     public System.Collections.ObjectModel.ObservableCollection<Models.RecentEntry> RecentEntries => _recentEntriesService.Entries;
     public bool HasRecentEntries => RecentEntries.Count > 0;
+
+    // Typeahead suggestions
+    public ObservableCollection<StudentDto> Suggestions { get; } = [];
+    [ObservableProperty] private bool _showSuggestions;
+    private CancellationTokenSource? _searchCts;
 
     // --- Computed Properties ---
 
@@ -94,6 +99,52 @@ public partial class FloorStaffViewModel : ObservableObject
         }
         catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
         finally { IsLoading = false; }
+    }
+
+    // --- Typeahead ---
+
+    /// <summary>
+    /// Called from code-behind on Entry.TextChanged. Debounces and queries for suggestions.
+    /// </summary>
+    public async Task OnSearchTextChangedAsync(string text)
+    {
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var token = _searchCts.Token;
+
+        Suggestions.Clear();
+        ShowSuggestions = false;
+
+        if (text.Length < 2) return;
+
+        try
+        {
+            await Task.Delay(300, token); // 300ms debounce
+            var results = await _supabaseService.SearchStudentsAsync(text);
+            if (token.IsCancellationRequested) return;
+
+            foreach (var s in results) Suggestions.Add(s);
+            ShowSuggestions = Suggestions.Count > 0;
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    [RelayCommand]
+    private void SelectSuggestion(StudentDto dto)
+    {
+        RegisterNumber = dto.RegisterNumber;
+        Student = new Student(dto.RegisterNumber, dto.Name, dto.Course,
+            dto.Batch, dto.Department, dto.Specialization, dto.Section);
+        Suggestions.Clear();
+        ShowSuggestions = false;
+        // Also load late count
+        _ = LoadLateCountAsync(dto.RegisterNumber);
+    }
+
+    private async Task LoadLateCountAsync(string registerNumber)
+    {
+        try { LateCount = await _supabaseService.GetLateComeCountAsync(registerNumber); }
+        catch { /* count is non-critical */ }
     }
 
     // --- Navigation ---

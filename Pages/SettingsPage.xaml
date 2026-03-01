@@ -17,6 +17,9 @@
                     <Label Text="Profile" FontSize="18" FontAttributes="Bold"
                            TextColor="{StaticResource Primary}" />
                     <BoxView HeightRequest="1" Color="{StaticResource Primary}" Opacity="0.2" Margin="0,4" />
+                    <Label IsVisible="{Binding IsProfileMissing}"
+                           Text="Profile not configured. Contact your administrator."
+                           FontSize="14" TextColor="{StaticResource Error}" />
                     <Label Text="{Binding UserName}" FontSize="16" FontAttributes="Bold"
                            TextColor="{AppThemeBinding Light={StaticResource OnSurfaceLight}, Dark={StaticResource OnSurfaceDark}}" />
                     <Label Text="{Binding UserEmail}" FontSize="14"

@@ -18,6 +18,8 @@ public partial class NfcScanViewModel : ObservableObject
     private readonly LateComingService _lateComingService;
     private readonly RecentEntriesService _recentEntriesService;
 
+    private int _isProcessingNfc; // 0 = idle, 1 = busy — prevents double-entry on rapid NFC taps
+
     public NfcScanViewModel(SupabaseService supabaseService, NfcService nfcService, LateComingService lateComingService, RecentEntriesService recentEntriesService)
     {
         _supabaseService = supabaseService;
@@ -46,7 +48,6 @@ public partial class NfcScanViewModel : ObservableObject
     [ObservableProperty] private Student? _student;
     [ObservableProperty] private bool _hasStudent;
     [ObservableProperty] private long _lateCount;
-    [ObservableProperty] private TimeSpan _selectedTime = DateTime.Now.TimeOfDay;
 
     // Recent entries (shared singleton)
     public System.Collections.ObjectModel.ObservableCollection<Models.RecentEntry> RecentEntries => _recentEntriesService.Entries;
@@ -127,20 +128,28 @@ public partial class NfcScanViewModel : ObservableObject
 
     private async void OnNfcTagScanned(string registerNumber)
     {
-        await MainThread.InvokeOnMainThreadAsync(async () =>
+        if (Interlocked.CompareExchange(ref _isProcessingNfc, 1, 0) != 0) return;
+        try
         {
-            IsLoading = true;
-            try
+            await MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                switch (CurrentMode)
+                IsLoading = true;
+                try
                 {
-                    case NfcMode.Turbo: await HandleTurboScan(registerNumber); break;
-                    default: await HandleRegularScan(registerNumber); break;
+                    switch (CurrentMode)
+                    {
+                        case NfcMode.Turbo: await HandleTurboScan(registerNumber); break;
+                        default: await HandleRegularScan(registerNumber); break;
+                    }
                 }
-            }
-            catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
-            finally { IsLoading = false; }
-        });
+                catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
+                finally { IsLoading = false; }
+            });
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _isProcessingNfc, 0);
+        }
     }
 
     private async Task HandleRegularScan(string registerNumber)
@@ -188,9 +197,6 @@ public partial class NfcScanViewModel : ObservableObject
 
     public async Task StartListeningAsync()
     {
-        // Refresh the selected time to current time each time the page appears
-        SelectedTime = DateTime.Now.TimeOfDay;
-
         // Manage NfcService event subscriptions
         _nfcService.TagScanned -= OnNfcTagScanned;
         _nfcService.TagScanned += OnNfcTagScanned;

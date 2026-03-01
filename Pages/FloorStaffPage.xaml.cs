@@ -11,6 +11,12 @@ public partial class FloorStaffPage : ContentPage
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
+        SearchEntry.TextChanged += OnSearchEntryTextChanged;
+    }
+
+    private async void OnSearchEntryTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        await _viewModel.OnSearchTextChangedAsync(e.NewTextValue ?? "");
     }
 
     protected override void OnAppearing()

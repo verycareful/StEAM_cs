@@ -16,8 +16,14 @@ public class MainActivity : MauiAppCompatActivity
     /// The most recently discovered native NFC Tag, captured from the intent
     /// before Plugin.NFC processes it. Used by NfcService to perform
     /// MIFARE Classic sector reads.
+    /// volatile ensures visibility across threads on multi-core ARM processors.
     /// </summary>
-    public static Android.Nfc.Tag? LastNfcTag { get; private set; }
+    private static volatile Android.Nfc.Tag? _lastNfcTag;
+    public static Android.Nfc.Tag? LastNfcTag
+    {
+        get => _lastNfcTag;
+        private set => _lastNfcTag = value;
+    }
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {

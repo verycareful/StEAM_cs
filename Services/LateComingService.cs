@@ -40,8 +40,15 @@ public class LateComingService
         }
 
         var time = TimeOnly.FromDateTime(DateTime.Now);
-        await _supabaseService.InsertLateComingAsync(student.RegisterNumber, today, time);
-        return new LateComingResult(true, "Late coming recorded successfully!");
+        try
+        {
+            await _supabaseService.InsertLateComingAsync(student.RegisterNumber, today, time);
+            return new LateComingResult(true, "Late coming recorded successfully!");
+        }
+        catch (Exception ex)
+        {
+            return new LateComingResult(false, $"Failed to record. Please try again. ({ex.Message})");
+        }
     }
 }
 

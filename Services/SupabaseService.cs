@@ -180,6 +180,34 @@ public class SupabaseService
     }
 
     /// <summary>
+    /// Searches students by register number prefix or name substring for typeahead.
+    /// Returns up to <paramref name="limit"/> distinct results.
+    /// </summary>
+    public async Task<List<StudentDto>> SearchStudentsAsync(string query, int limit = 8)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Length < 2) return [];
+        try
+        {
+            var byRegNum = Client.From<StudentDto>()
+                .Filter("register_number", Operator.ILike, $"{query}%")
+                .Limit(limit);
+            var byName = Client.From<StudentDto>()
+                .Filter("name", Operator.ILike, $"%{query}%")
+                .Limit(limit);
+
+            var r1 = await byRegNum.Get();
+            var r2 = await byName.Get();
+
+            return r1.Models
+                .Concat(r2.Models)
+                .DistinctBy(s => s.RegisterNumber)
+                .Take(limit)
+                .ToList();
+        }
+        catch { return []; }
+    }
+
+    /// <summary>
     /// Fetches multiple students by register numbers in a single query (avoids N+1).
     /// </summary>
     public async Task<List<StudentDto>> GetStudentsByRegNumbersAsync(IEnumerable<string> registerNumbers)
@@ -207,15 +235,11 @@ public class SupabaseService
     {
         try
         {
-            // Note: Count(CountType.Exact) causes PGRST204 on this table,
-            // so we fetch minimal data (just register_number) and count client-side
-            var response = await Client.From<LateComingDto>()
-                .Select("register_number")
-                .Filter("register_number", Operator.Equals, registerNumber)
-                .Get();
-            return response.Models.Count;
+            var response = await Client.Rpc("get_late_count",
+                new Dictionary<string, object> { { "p_register_number", registerNumber } });
+            return long.TryParse(response.Content?.Trim('"'), out var count) ? count : 0;
         }
-        catch (Exception ex)
+        catch
         {
             return 0;
         }
@@ -313,6 +337,7 @@ public class SupabaseService
             var response = await query
                 .Order("register_number", Ordering.Ascending)
                 .Order("date", Ordering.Ascending)
+                .Limit(2000)
                 .Get();
 
             return response.Models;
@@ -397,7 +422,9 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-
+#if ANDROID
+            Log.Error("SupabaseService", $"GetDataWithStudentsAsync failed: {ex.Message}");
+#endif
             return [];
         }
     }

@@ -21,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string _userName = "";
     [ObservableProperty] private string _userEmail = "";
     [ObservableProperty] private string _userRole = "";
+    [ObservableProperty] private bool _isProfileMissing;
 
     // --- Theme ---
     [ObservableProperty] private int _selectedThemeIndex;
@@ -48,6 +49,11 @@ public partial class SettingsViewModel : ObservableObject
             {
                 UserName = details.Name;
                 UserRole = details.Role;
+                IsProfileMissing = false;
+            }
+            else
+            {
+                IsProfileMissing = true;
             }
             // Get email from auth
             UserEmail = _supabaseService.IsInitialized
@@ -56,7 +62,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch
         {
-            // Silently fail — profile is optional display
+            IsProfileMissing = true;
         }
     }
 

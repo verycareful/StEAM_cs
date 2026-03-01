@@ -86,6 +86,14 @@ public partial class StaffViewModel : ObservableObject
 
         try
         {
+            // Enforce maximum date range of 90 days
+            if ((EndDate - StartDate).TotalDays > 90)
+            {
+                ErrorMessage = "Date range cannot exceed 90 days.";
+                IsLoading = false;
+                return;
+            }
+
             int? batch = null;
             if (!string.IsNullOrWhiteSpace(FilterBatch) && int.TryParse(FilterBatch, out var b))
                 batch = b;

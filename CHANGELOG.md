@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-03-01 - Second Audit Fixes
+
+### Fixed
+- **CRITICAL** — Thread-safety issue in `MainActivity.LastNfcTag`: property backed by `volatile` field to ensure multi-core ARM processors read the latest value instead of stale register-cached null.
+- **HIGH** — Double-entry race condition in NFC Turbo mode: added `Interlocked.CompareExchange` guard in `NfcScanViewModel.OnNfcTagScanned` to prevent concurrent handling when the same card is tapped rapidly.
+- **HIGH** — Unhandled exception in `LateComingService.RecordLateAsync`: `InsertLateComingAsync` now wrapped in try-catch, returning a user-friendly `LateComingResult(false, "Failed to record...")` instead of propagating raw `PostgrestException`.
+- **HIGH** — Performance regression in `GetLateComeCountAsync`: now uses Supabase RPC function `get_late_count()` instead of fetching all late-coming rows client-side and counting. Reduces network transfer and scales to large student populations. (**Manual step**: create the Supabase RPC function; SQL provided in audit report section 3.4.)
+- **MEDIUM** — ObservableCollection thread-safety in `RecentEntriesService`: `AddEntry` now dispatches collection mutation to `MainThread` via `MainThread.BeginInvokeOnMainThread()` to prevent `NotSupportedException` if called from background threads.
+- **MEDIUM** — Removed dead `SelectedTime` property from `FloorStaffViewModel`, `NfcScanViewModel`, and `CameraScanViewModel`. The property was binding to a TimePicker UI but was never passed to `RecordLateAsync`, making the time picker cosmetic. Removed TimePicker from XAML (`NfcScanPage`, `FloorStaffPage`) to eliminate misleading UI.
+- **MEDIUM** — Staff dashboard unbounded data loading: `StaffViewModel.SearchAsync()` enforces a 90-day maximum date range; `SupabaseService.GetDataAsync()` adds `.Limit(2000)` as a safety ceiling to cap memory usage on large queries.
+- **MEDIUM** — Defensive null check on `MifareClassic.KeyDefault`: if null (rare on some OEM variants), falls back to factory default key bytes `0xFF x 6` instead of passing null to native method.
+- **LOW** — Observability gap in `GetDataWithStudentsAsync`: added `Android.Util.Log.E` diagnostic on catch block so silent failures on the staff dashboard can be diagnosed via logcat.
+- **LOW** — DI architecture consistency: `LoadingPage` registered as `AddSingleton` instead of `AddTransient` to accurately reflect its lifetime.
+- **LOW** — User profile missing state: `SettingsViewModel` added `IsProfileMissing` flag; `SettingsPage` now displays "Profile not configured. Contact your administrator." when the user's `user_details` row is absent.
+
+### Changed
+- **UX** — NFC Turbo mode visual distinction: Turbo button background pinned to deep red `#C62828` (no longer theme-overridable); label prefix changed to `[T]` for clarity; added a red warning banner ("TURBO — entries submitted instantly") below the mode toggle when Turbo is active.
+- **UX** — Manual search on FloorStaffPage now includes debounced typeahead:
+  - New `SearchStudentsAsync(string query)` method in `SupabaseService` queries both register number (prefix match, ILike) and name (substring match, ILike) in parallel, returning up to 8 deduplicated results.
+  - `FloorStaffViewModel` wires `OnSearchTextChangedAsync` to the Entry's TextChanged event with 300ms debounce and cancellation token to avoid stale results.
+  - New `SelectSuggestion(StudentDto)` relay command auto-populates student details when a suggestion is tapped, bypassing the Search button.
+  - `FloorStaffPage.xaml` displays a suggestion overlay below the register number entry (visible only when suggestions exist), showing student name, register number, and department per item.
+
 ## [1.1.1] - 2026-03-01
 
 ### Added
@@ -34,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Cold-start session restore failure: Supabase C# client (`Gotrue 6.0.3`) calls the `IGotrueSessionPersistence.LoadSession()` handler but does not refresh an expired access token or populate `CurrentSession`/`CurrentUser` from the result. The explicit `SetSession` call after `InitializeAsync()` resolves this, ensuring users with valid refresh tokens are not asked to log in again.
 
-## [1.1.0] - 2026-02-28
+## [1.1.0] - 2026-02-28 - First Audit Fixes
 
 ### Added
 - Created an explicit `MauiCameraViewHandler` for Android to interact securely with Camera2 and `ProcessCameraProvider`.
