@@ -5,7 +5,7 @@ A cross-platform .NET MAUI application for tracking student late arrivals on cam
 
 ## Overview
 
-StEAM is used by university floor staff to record students who arrive late and by administrative staff to review, filter, and analyze late-arrival data across departments, courses, batches, and sections. Students are identified by register number entered manually, by tapping their NFC-enabled ID card, or by scanning their ID card with the device camera.
+StEAM is used by university floor staff to record students who arrive late and by administrative staff to review, filter, and analyze late-arrival data across departments, courses, batches, and sections. Students are identified by register number entered manually, by tapping their NFC-enabled MIFARE Classic 4K ID card, or by scanning their ID card with the device camera.
 
 
 ## Features
@@ -13,17 +13,18 @@ StEAM is used by university floor staff to record students who arrive late and b
 ### Authentication
 - Email and password login via Supabase Auth
 - Role-based access control (floor staff vs. staff)
-- Persistent session management with automatic token refresh
-- Custom session persistence using secure local storage
+- Persistent session across cold starts using `SecureStorage` (Android Keystore-backed AES-256) with automatic token refresh on startup
+- Custom `IGotrueSessionPersistence` implementation that probes stored tokens before init and forces a `SetSession` exchange if the Supabase client does not self-restore
 
-### Floor Staff -- Recording Late Arrivals
+### Floor Staff — Recording Late Arrivals
 - Search students by register number (manual text entry)
-- NFC scanning: tap a student ID card to identify the student via their card UID
-- Camera scanning: use on-device OCR (text recognition) to read the register number from an ID card
-- Card ID assignment: link an NFC card UID to a student record for future tap-to-identify
+- **NFC scanning (MIFARE Classic 4K)**: tap a student ID card to read Sector 0 Blocks 1–2; the register number is ASCII-decoded from the card data and validated with regex `^[A-Z]{2}\d{13}$`
+  - Two scan modes: **Regular** (identify then manually submit) and **Turbo** (auto-submit on tap)
+- **Camera scanning**: barcode scan (ZXing) or OCR capture (ML Kit) to read the register number from an ID card photo
+- **Recent Entries panel**: compact scrollable list of students successfully submitted during the current session, showing name, register number, submission time, and a colour-coded identification method badge (NFC · Barcode · Camera · Manual); cleared on app close or manual tap
 - Duplicate entry prevention: checks if the student has already been marked late for the current day
 
-### Staff Dashboard -- Viewing and Filtering Records
+### Staff Dashboard — Viewing and Filtering Records
 - Filter late-coming records by date range, department, course, batch, section, and student name
 - Two viewing modes:
   - Student view: records grouped by student, showing total late count per student
@@ -71,14 +72,15 @@ StEAM-.NET-main/
 |   |-- Dtos.cs                         Supabase table DTOs (UserDetailsDto, StudentDto,
 |   |                                   LateComingDto, DepartmentDto, CourseDto)
 |   |-- Student.cs                      Domain record type for student data
+|   |-- RecentEntry.cs                  In-session recent submission entry with IdentificationMethod
 |   |-- Role.cs                         Role enum and database value mapping
 |
 |-- ViewModels/
 |   |-- LoginViewModel.cs              Login form logic and authentication
 |   |-- RoleSelectorViewModel.cs       Post-login role-based navigation
 |   |-- FloorStaffViewModel.cs         Manual register number entry and late-arrival recording
-|   |-- NfcScanViewModel.cs            NFC tag reading, card ID lookup, and card assignment
-|   |-- CameraScanViewModel.cs         Camera-based OCR scanning for register numbers
+|   |-- NfcScanViewModel.cs            NFC tag reading (MIFARE Classic block extraction) and late-arrival recording
+|   |-- CameraScanViewModel.cs         Camera-based barcode/OCR scanning for register numbers
 |   |-- StaffViewModel.cs              Staff dashboard filters and data retrieval
 |   |-- DashboardViewModel.cs          Dashboard summary and statistics
 |   |-- SettingsViewModel.cs           Theme management and account operations
@@ -87,9 +89,9 @@ StEAM-.NET-main/
 |   |-- LoadingPage.xaml                Splash/loading screen during initialization
 |   |-- LoginPage.xaml                  Email and password login form
 |   |-- RoleSelectorPage.xaml           Role selection after authentication
-|   |-- FloorStaffPage.xaml             Manual student lookup and late-arrival entry
-|   |-- NfcScanPage.xaml                NFC card scanning interface
-|   |-- CameraScanPage.xaml             Camera viewfinder with OCR overlay
+|   |-- FloorStaffPage.xaml             Manual student lookup, late-arrival entry, recent entries panel
+|   |-- NfcScanPage.xaml                NFC card scanning interface with recent entries panel
+|   |-- CameraScanPage.xaml             Camera viewfinder with barcode/OCR overlay
 |   |-- StaffPage.xaml                  Filterable staff dashboard with grouped views
 |   |-- DashboardPage.xaml              Summary dashboard
 |   |-- SettingsPage.xaml               Application settings
@@ -97,10 +99,11 @@ StEAM-.NET-main/
 |-- Services/
 |   |-- SupabaseService.cs             Supabase client initialization, auth, and all
 |   |                                   database operations (students, late comings, lookups)
+|   |-- RecentEntriesService.cs        In-memory singleton tracking submitted entries this session
 |   |-- ThemeService.cs                Theme persistence and application
-|   |-- NfcService.cs                  NFC adapter management and tag reading
+|   |-- NfcService.cs                  NFC adapter management; MIFARE Classic block reading
 |   |-- LateComingService.cs           Late-coming business logic layer
-|   |-- CustomSessionPersistence.cs    Supabase session save/restore to local storage
+|   |-- CustomSessionPersistence.cs    Supabase session save/restore to SecureStorage (Keystore)
 |   |-- SnackbarHelper.cs              Toast/snackbar notification utility
 |
 |-- Converters/
@@ -131,7 +134,7 @@ StEAM-.NET-main/
 |----------------|---------------------|--------------------------------------------------------------|
 | auth.users     | id (UUID)           | Supabase-managed authentication accounts                     |
 | user_details   | id (UUID, FK)       | Staff profile: name, staff_id, department, role              |
-| students       | register_number     | Student records: name, department, course, specialization, batch, section, card_id |
+| students       | register_number     | Student records: name, department, course, specialization, batch, section |
 | late_comings   | (register_number, date) | Late arrival entries: date, time, registered_by (staff UUID) |
 | departments    | department          | Lookup table for department names                            |
 | courses        | course              | Lookup table for course names                                |
@@ -206,13 +209,18 @@ Do not commit the `supabase.env` file to version control. It is excluded by the 
 
 ## Troubleshooting & Architecture Notes
 
+### NFC — MIFARE Classic Block Reading
+NFC identification reads Sector 0, Blocks 1–2 directly from the student's MIFARE Classic 4K card. The register number is stored on the card as a null-terminated ASCII string. `Plugin.MAUI.NFC`'s `ITagInfo` abstraction does not expose the native Android `Tag` object needed for authenticated MIFARE reads; the workaround is a `static LastNfcTag` property on `MainActivity` populated in `OnNewIntent`, which `NfcService` reads before performing block I/O.
+
 ### Camera2 and NFC Hardware Deadlocks
 On some Android devices (specifically Samsung), the `CameraService` suppresses NFC polling whenever a `CameraCaptureSession` is active. To prevent the NFC adapter from entering a locked "abandoned buffer" state due to race conditions during page navigation, StEAM uses a custom `MauiCameraViewHandler` (found in `Platforms/Android/`). 
 
 If you modify the ZXing scanner initialization, ensure you do not break the synchronous `StopCameraAsync()` tear-down block invoked in `CameraScanPage.xaml.cs`. This block explicitly waits for the `CAMERA_STATE_CLOSED` broadcast from the Android framework before destroying the `SurfaceView`.
 
-### Cold Start Storage
-Session persistence relies on secure local storage. If token-refresh issues occur on cold start, verify that the `CustomSessionPersistence` implementation isn't faulting due to OS-level keychain restrictions (frequent on un-provisioned iOS simulators).
+### Cold Start Session Restore
+Session data is stored in `SecureStorage` (Android Keystore AES-256) via `CustomSessionPersistence`. On cold start, `SupabaseService.InitializeAsync()` triggers `LoadSession()` through the Gotrue library, but **Gotrue 6.0.3 does not automatically refresh an expired access token or populate `CurrentSession`/`CurrentUser` from the persisted session**. `SupabaseService` works around this by calling `client.Auth.SetSession(accessToken, refreshToken)` explicitly after init when it detects a stored session but a null `CurrentSession`. If the refresh token is expired or revoked, the session is destroyed and the user is redirected to the login screen.
+
+If token-refresh issues occur on cold start on iOS, verify that `CustomSessionPersistence` is not faulting due to OS-level Keychain restrictions (common on un-provisioned simulators).
 
 ## License
 

@@ -105,16 +105,13 @@ public class MauiCameraViewHandler : CameraBarcodeReaderViewHandler
 
             if (!closedInTime)
             {
-                System.Diagnostics.Debug.WriteLine("[MauiCameraViewHandler] WARNING: Camera close event timed out after 2000ms. Releasing anyway.");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("[MauiCameraViewHandler] Camera synchronously closed successfully.");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[MauiCameraViewHandler] Error during synchronous teardown: {ex.Message}");
         }
         finally
         {

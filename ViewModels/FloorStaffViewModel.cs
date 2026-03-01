@@ -9,11 +9,13 @@ public partial class FloorStaffViewModel : ObservableObject
 {
     private readonly SupabaseService _supabaseService;
     private readonly LateComingService _lateComingService;
+    private readonly RecentEntriesService _recentEntriesService;
 
-    public FloorStaffViewModel(SupabaseService supabaseService, LateComingService lateComingService)
+    public FloorStaffViewModel(SupabaseService supabaseService, LateComingService lateComingService, RecentEntriesService recentEntriesService)
     {
         _supabaseService = supabaseService;
         _lateComingService = lateComingService;
+        _recentEntriesService = recentEntriesService;
     }
 
     // --- Observable Properties ---
@@ -25,6 +27,10 @@ public partial class FloorStaffViewModel : ObservableObject
     [ObservableProperty] private string? _popupMessage;
     [ObservableProperty] private bool _hasStudent;
     [ObservableProperty] private TimeSpan _selectedTime = DateTime.Now.TimeOfDay;
+
+    // Recent entries (shared singleton)
+    public System.Collections.ObjectModel.ObservableCollection<Models.RecentEntry> RecentEntries => _recentEntriesService.Entries;
+    public bool HasRecentEntries => RecentEntries.Count > 0;
 
     // --- Computed Properties ---
 
@@ -78,7 +84,12 @@ public partial class FloorStaffViewModel : ObservableObject
         try
         {
             var result = await _lateComingService.RecordLateAsync(Student);
-            if (result.Success) LateCount++;
+            if (result.Success)
+            {
+                LateCount++;
+                _recentEntriesService.AddEntry(Student, Models.IdentificationMethod.Manual);
+                OnPropertyChanged(nameof(HasRecentEntries));
+            }
             PopupMessage = result.Message;
         }
         catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
@@ -86,6 +97,13 @@ public partial class FloorStaffViewModel : ObservableObject
     }
 
     // --- Navigation ---
+
+    [RelayCommand]
+    private void ClearRecentEntries()
+    {
+        _recentEntriesService.Clear();
+        OnPropertyChanged(nameof(HasRecentEntries));
+    }
 
     [RelayCommand]
     private async Task OpenCameraScanAsync()

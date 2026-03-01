@@ -18,12 +18,14 @@ public partial class CameraScanViewModel : ObservableObject
     private readonly SupabaseService _supabaseService;
     private readonly IOcrService _ocrService;
     private readonly LateComingService _lateComingService;
+    private readonly RecentEntriesService _recentEntriesService;
 
-    public CameraScanViewModel(SupabaseService supabaseService, IOcrService ocrService, LateComingService lateComingService)
+    public CameraScanViewModel(SupabaseService supabaseService, IOcrService ocrService, LateComingService lateComingService, RecentEntriesService recentEntriesService)
     {
         _supabaseService = supabaseService;
         _ocrService = ocrService;
         _lateComingService = lateComingService;
+        _recentEntriesService = recentEntriesService;
     }
 
     // --- Observable Properties ---
@@ -40,6 +42,13 @@ public partial class CameraScanViewModel : ObservableObject
     [ObservableProperty] private bool _hasStudent;
     [ObservableProperty] private long _lateCount;
     [ObservableProperty] private TimeSpan _selectedTime = DateTime.Now.TimeOfDay;
+
+    // Track which method identified this student
+    private Models.IdentificationMethod _studentIdentificationMethod = Models.IdentificationMethod.Barcode;
+
+    // Recent entries (shared singleton)
+    public System.Collections.ObjectModel.ObservableCollection<Models.RecentEntry> RecentEntries => _recentEntriesService.Entries;
+    public bool HasRecentEntries => RecentEntries.Count > 0;
 
     // --- Computed Properties ---
 
@@ -82,7 +91,7 @@ public partial class CameraScanViewModel : ObservableObject
         {
             RegisterNumber = value.Trim().ToUpper();
             PopupMessage = $"Barcode: {RegisterNumber}";
-            await SearchAndLoadStudentAsync(RegisterNumber);
+            await SearchAndLoadStudentAsync(RegisterNumber, Models.IdentificationMethod.Barcode);
         });
     }
 
@@ -120,7 +129,7 @@ public partial class CameraScanViewModel : ObservableObject
             {
                 RegisterNumber = regNumMatch.Value.ToUpper();
                 PopupMessage = $"Detected: {RegisterNumber}";
-                await SearchAndLoadStudentAsync(RegisterNumber);
+                await SearchAndLoadStudentAsync(RegisterNumber, Models.IdentificationMethod.Camera);
             }
             else
             {
@@ -130,7 +139,6 @@ public partial class CameraScanViewModel : ObservableObject
         catch (Exception ex)
         {
             PopupMessage = $"OCR Error: {ex.Message}";
-            System.Diagnostics.Debug.WriteLine($"OCR Error: {ex}");
         }
         finally
         {
@@ -147,7 +155,12 @@ public partial class CameraScanViewModel : ObservableObject
         try
         {
             var result = await _lateComingService.RecordLateAsync(Student);
-            if (result.Success) LateCount++;
+            if (result.Success)
+            {
+                LateCount++;
+                _recentEntriesService.AddEntry(Student, _studentIdentificationMethod);
+                OnPropertyChanged(nameof(HasRecentEntries));
+            }
             PopupMessage = result.Message;
         }
         catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
@@ -156,8 +169,9 @@ public partial class CameraScanViewModel : ObservableObject
 
     // --- Helpers ---
 
-    private async Task SearchAndLoadStudentAsync(string regNum)
+    private async Task SearchAndLoadStudentAsync(string regNum, Models.IdentificationMethod method = Models.IdentificationMethod.Barcode)
     {
+        _studentIdentificationMethod = method;
         IsLoading = true;
         try
         {

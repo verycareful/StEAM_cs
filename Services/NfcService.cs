@@ -1,4 +1,8 @@
 using Plugin.NFC;
+#if ANDROID
+using Android.Nfc;
+using Android.Nfc.Tech;
+#endif
 
 namespace StEAM_.NET_main.Services;
 
@@ -101,12 +105,10 @@ public class NfcService
 
                 CrossNFC.Current.StartListening();
                 _isListening = true;
-                System.Diagnostics.Debug.WriteLine($"[NfcService] Started listening on attempt {attempt + 1}");
                 return;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[NfcService] Start attempt {attempt + 1} failed: {ex.Message}");
                 if (attempt < maxRetries)
                 {
                     await Task.Delay(delayMs);
@@ -141,7 +143,6 @@ public class NfcService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error stopping NFC listening: {ex.Message}");
         }
 
         try
@@ -151,7 +152,6 @@ public class NfcService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error unsubscribing NFC events: {ex.Message}");
         }
 
         _isListening = false;
@@ -171,24 +171,77 @@ public class NfcService
     {
         if (tagInfo == null) return;
 
+#if ANDROID
         try
         {
-            // Get the UID as hex string (e.g., "49:A2:39:63")
-            var identifier = tagInfo.Identifier;
-            if (identifier != null && identifier.Length > 0)
+            // Get the native Tag captured by MainActivity.OnNewIntent.
+            // ITagInfo does not expose the underlying Android.Nfc.Tag,
+            // so MainActivity stores it in a static property for us.
+            var nativeTag = MainActivity.LastNfcTag;
+            if (nativeTag == null)
             {
-                var uid = string.Join(":", identifier.Select(b => b.ToString("X2")));
-                TagScanned?.Invoke(uid);
+                ErrorOccurred?.Invoke("Could not read card hardware.");
+                return;
             }
-            else
+
+            // Check this is a MifareClassic card — rejects NCMC, NTAG, Ultralight, etc.
+            var mifare = MifareClassic.Get(nativeTag);
+            if (mifare == null)
             {
-                ErrorOccurred?.Invoke("Could not read tag ID");
+                ErrorOccurred?.Invoke("Unrecognized card type.");
+                return;
+            }
+
+            try
+            {
+                mifare.Connect();
+
+                // Authenticate Sector 0 with factory default Key A (FF FF FF FF FF FF)
+                bool auth = mifare.AuthenticateSectorWithKeyA(0, MifareClassic.KeyDefault?.ToArray());
+                if (!auth)
+                {
+                    ErrorOccurred?.Invoke("Card authentication failed.");
+                    return;
+                }
+
+                // Block 1 is the second block of Sector 0 (block index 1)
+                var block1 = mifare.ReadBlock(1);
+                // Block 2 is the third block of Sector 0 (block index 2)
+                var block2 = mifare.ReadBlock(2);
+
+                if (block1 == null || block1.Length < 8 || block2 == null || block2.Length < 7)
+                {
+                    ErrorOccurred?.Invoke("Could not read card data.");
+                    return;
+                }
+
+                // Extract register number: first 8 bytes of block1 + first 7 bytes of block2
+                var part1 = System.Text.Encoding.ASCII.GetString(block1, 0, 8).Trim();
+                var part2 = System.Text.Encoding.ASCII.GetString(block2, 0, 7).Trim();
+                var registerNumber = part1 + part2;
+
+                // Validate format: exactly 2 uppercase letters followed by 13 digits
+                if (!System.Text.RegularExpressions.Regex.IsMatch(registerNumber, @"^[A-Z]{2}\d{13}$"))
+                {
+                    ErrorOccurred?.Invoke("Unrecognized card.");
+                    return;
+                }
+
+                TagScanned?.Invoke(registerNumber);
+            }
+            finally
+            {
+                try { mifare.Close(); } catch { }
             }
         }
         catch (Exception ex)
         {
-            ErrorOccurred?.Invoke($"Error reading tag: {ex.Message}");
+            ErrorOccurred?.Invoke($"Error reading card: {ex.Message}");
         }
+#else
+        // Non-Android platforms: not supported
+        ErrorOccurred?.Invoke("NFC card reading is only supported on Android.");
+#endif
     }
 
     /// <summary>

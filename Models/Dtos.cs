@@ -54,9 +54,6 @@ public class StudentDto : BaseModel
     [Column("section")]
     public string Section { get; set; } = "";
 
-    [Column("card_id")]
-    public string? CardId { get; set; }
-
     [Column("created_at")]
     public string? CreatedAt { get; set; }
 }

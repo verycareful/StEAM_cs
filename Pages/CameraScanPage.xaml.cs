@@ -96,7 +96,6 @@ public partial class CameraScanPage : ContentPage
         {
             _viewModel.PopupMessage = $"Error: {ex.Message}";
             _viewModel.IsLoading = false;
-            System.Diagnostics.Debug.WriteLine($"OCR capture error: {ex}");
         }
     }
 
@@ -140,7 +139,6 @@ public partial class CameraScanPage : ContentPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error stopping camera synchronously: {ex.Message}");
         }
     }
 
@@ -155,7 +153,6 @@ public partial class CameraScanPage : ContentPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error disconnecting camera handler: {ex.Message}");
         }
     }
 }

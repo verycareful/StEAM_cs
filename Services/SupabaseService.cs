@@ -2,6 +2,9 @@ using Supabase;
 using StEAM_.NET_main.Models;
 using Supabase.Postgrest;
 using static Supabase.Postgrest.Constants;
+#if ANDROID
+using Android.Util;
+#endif
 
 namespace StEAM_.NET_main.Services;
 
@@ -44,13 +47,45 @@ public class SupabaseService
         var key = Environment.GetEnvironmentVariable("SUPABASE_KEY")
             ?? throw new InvalidOperationException("SUPABASE_KEY environment variable is not set.");
 
+        var sessionHandler = new CustomSessionPersistence();
         var options = new SupabaseOptions 
         { 
             AutoRefreshToken = true,
-            SessionHandler = new CustomSessionPersistence()
+            SessionHandler = sessionHandler
         };
         var client = new Supabase.Client(url, key, options);
+        
+        // Probe for a stored session BEFORE full initialization
+        var probeSession = sessionHandler.LoadSession();
+        HasStoredSession = probeSession != null && !string.IsNullOrEmpty(probeSession.RefreshToken);
+        
         await client.InitializeAsync();
+
+        // If the library didn't restore CurrentSession from storage (common with expired access tokens),
+        // manually inject the session and force a refresh so CurrentUser is populated before we signal completion.
+        if (HasStoredSession && client.Auth.CurrentSession == null && probeSession?.RefreshToken != null)
+        {
+#if ANDROID
+            Log.Info("StEAM.Session", "CurrentSession null after init, calling SetSession to force token refresh...");
+#endif
+            try
+            {
+                // SetSession detects expired access tokens and calls RefreshSession internally
+                await client.Auth.SetSession(probeSession.AccessToken ?? "", probeSession.RefreshToken);
+#if ANDROID
+                Log.Info("StEAM.Session", $"SetSession succeeded, CurrentUser: {client.Auth.CurrentUser?.Email}");
+#endif
+            }
+            catch (Exception ex)
+            {
+                // Refresh token expired or revoked — clear it so the user is prompted to log in
+#if ANDROID
+                Log.Error("StEAM.Session", $"SetSession failed: {ex.GetType().Name}: {ex.Message}");
+#endif
+                sessionHandler.DestroySession();
+                HasStoredSession = false;
+            }
+        }
 
         // Thread-safe assignment
         lock (_lock) { _client = client; }
@@ -58,19 +93,16 @@ public class SupabaseService
         // Auto-save session on any auth state change (sign-in, token refresh, etc.)
         client.Auth.AddStateChangedListener((_, state) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] Auth state changed: {state}");
         });
     }
+
+    /// <summary>True if a session with a refresh token was loaded from SecureStorage on this cold start.</summary>
+    public bool HasStoredSession { get; private set; }
 
     public bool HasValidSession()
     {
         var session = _client?.Auth.CurrentSession;
         if (session == null) return false;
-
-        // A session is valid if it has a refresh token — the library's
-        // AutoRefreshToken setting will renew the access token before API calls.
-        // Checking access token expiry here was too strict: after a cold start
-        // the access token is expired but the refresh token is still valid.
         return !string.IsNullOrEmpty(session.RefreshToken);
     }
 
@@ -102,7 +134,6 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] SignOut network call failed (local session already cleared): {ex.Message}");
         }
     }
 
@@ -127,7 +158,6 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetUserDetails error: {ex.Message}");
             return null;
         }
     }
@@ -145,23 +175,6 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetStudent error: {ex.Message}");
-            return null;
-        }
-    }
-
-    public async Task<StudentDto?> GetStudentByCardIdAsync(string cardId)
-    {
-        try
-        {
-            var response = await Client.From<StudentDto>()
-                .Filter("card_id", Operator.Equals, cardId)
-                .Single();
-            return response;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetStudentByCardId error: {ex.Message}");
             return null;
         }
     }
@@ -184,20 +197,8 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetStudentsByRegNumbers error: {ex.Message}");
             return [];
         }
-    }
-
-    /// <summary>
-    /// Assigns a card ID to a student by updating the students table.
-    /// </summary>
-    public async Task AssignCardIdAsync(string registerNumber, string cardId)
-    {
-        await Client.From<StudentDto>()
-            .Where(s => s.RegisterNumber == registerNumber)
-            .Set(s => s.CardId!, cardId)
-            .Update();
     }
 
     // --- Late Comings ---
@@ -216,7 +217,6 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetLateComeCount error: {ex.Message}");
             return 0;
         }
     }
@@ -237,7 +237,6 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] CheckAlreadyEntered error: {ex.Message}");
             throw; // Let caller decide how to handle — do not swallow as "already entered"
         }
     }
@@ -269,7 +268,6 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetDepartments error: {ex.Message}");
             return [];
         }
     }
@@ -283,7 +281,6 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetCourses error: {ex.Message}");
             return [];
         }
     }
@@ -322,7 +319,6 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetData error: {ex.Message}");
             return [];
         }
     }
@@ -401,7 +397,7 @@ public class SupabaseService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SupabaseService] GetDataWithStudents error: {ex.Message}");
+
             return [];
         }
     }

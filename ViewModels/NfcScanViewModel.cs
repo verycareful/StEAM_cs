@@ -8,8 +8,7 @@ namespace StEAM_.NET_main.ViewModels;
 public enum NfcMode
 {
     Regular,
-    Turbo,
-    Register
+    Turbo
 }
 
 public partial class NfcScanViewModel : ObservableObject
@@ -17,12 +16,14 @@ public partial class NfcScanViewModel : ObservableObject
     private readonly SupabaseService _supabaseService;
     private readonly NfcService _nfcService;
     private readonly LateComingService _lateComingService;
+    private readonly RecentEntriesService _recentEntriesService;
 
-    public NfcScanViewModel(SupabaseService supabaseService, NfcService nfcService, LateComingService lateComingService)
+    public NfcScanViewModel(SupabaseService supabaseService, NfcService nfcService, LateComingService lateComingService, RecentEntriesService recentEntriesService)
     {
         _supabaseService = supabaseService;
         _nfcService = nfcService;
         _lateComingService = lateComingService;
+        _recentEntriesService = recentEntriesService;
 
         // Don't subscribe in constructor — StartListening/StopListening manages subscriptions
         IsNfcAvailable = _nfcService.IsAvailable;
@@ -40,7 +41,6 @@ public partial class NfcScanViewModel : ObservableObject
     [ObservableProperty] private string _nfcStatusText = "";
     [ObservableProperty] private bool _isRegularMode = true;
     [ObservableProperty] private bool _isTurboMode;
-    [ObservableProperty] private bool _isRegisterMode;
 
     // Student found via NFC
     [ObservableProperty] private Student? _student;
@@ -48,12 +48,9 @@ public partial class NfcScanViewModel : ObservableObject
     [ObservableProperty] private long _lateCount;
     [ObservableProperty] private TimeSpan _selectedTime = DateTime.Now.TimeOfDay;
 
-    // Card Registration
-    [ObservableProperty] private bool _isCardRegistrationMode;
-    [ObservableProperty] private string _pendingCardId = "";
-    [ObservableProperty] private string _cardSearchRegNumber = "";
-    [ObservableProperty] private Student? _cardSearchStudent;
-    [ObservableProperty] private bool _hasCardSearchStudent;
+    // Recent entries (shared singleton)
+    public System.Collections.ObjectModel.ObservableCollection<Models.RecentEntry> RecentEntries => _recentEntriesService.Entries;
+    public bool HasRecentEntries => RecentEntries.Count > 0;
 
     // --- Computed Properties ---
 
@@ -62,9 +59,6 @@ public partial class NfcScanViewModel : ObservableObject
     public string StudentCourse => Student != null ? $"Batch {Student.Batch} of {Student.Course}" : "";
     public string StudentSection => Student != null ? $"Section {Student.Section}" : "";
     public string LateCountText => $"Late {LateCount} time(s)";
-    public string CardSearchStudentName => CardSearchStudent?.Name ?? "";
-    public string CardSearchStudentDept => CardSearchStudent != null
-        ? $"{CardSearchStudent.Department} — {CardSearchStudent.Course}" : "";
 
     partial void OnStudentChanged(Student? value)
     {
@@ -77,39 +71,27 @@ public partial class NfcScanViewModel : ObservableObject
 
     partial void OnLateCountChanged(long value) => OnPropertyChanged(nameof(LateCountText));
 
-    partial void OnCardSearchStudentChanged(Student? value)
-    {
-        HasCardSearchStudent = value != null;
-        OnPropertyChanged(nameof(CardSearchStudentName));
-        OnPropertyChanged(nameof(CardSearchStudentDept));
-    }
-
     // --- Commands ---
+
+    [RelayCommand]
+    private void ClearRecentEntries()
+    {
+        _recentEntriesService.Clear();
+        OnPropertyChanged(nameof(HasRecentEntries));
+    }
 
     [RelayCommand]
     private void SetMode(string mode)
     {
         if (!Enum.TryParse<NfcMode>(mode, out var nfcMode)) return;
 
-        // Clear registration state
-        if (CurrentMode == NfcMode.Register && nfcMode != NfcMode.Register)
-        {
-            IsCardRegistrationMode = false;
-            PendingCardId = "";
-            CardSearchRegNumber = "";
-            CardSearchStudent = null;
-        }
-
         CurrentMode = nfcMode;
         IsRegularMode = nfcMode == NfcMode.Regular;
         IsTurboMode = nfcMode == NfcMode.Turbo;
-        IsRegisterMode = nfcMode == NfcMode.Register;
         NfcStatusText = nfcMode switch
         {
-            NfcMode.Regular => "NFC listening... Tap a card",
             NfcMode.Turbo => "Turbo — Tap card for instant entry",
-            NfcMode.Register => "Register — Tap card to assign",
-            _ => ""
+            _ => "NFC listening... Tap a card"
         };
     }
 
@@ -129,55 +111,13 @@ public partial class NfcScanViewModel : ObservableObject
         try
         {
             var result = await _lateComingService.RecordLateAsync(Student);
-            if (result.Success) LateCount++;
-            PopupMessage = result.Message;
-        }
-        catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
-        finally { IsLoading = false; }
-    }
-
-    [RelayCommand]
-    private async Task SearchCardStudentAsync()
-    {
-        if (string.IsNullOrWhiteSpace(CardSearchRegNumber))
-        { PopupMessage = "Please enter a register number."; return; }
-
-        IsLoading = true;
-        try
-        {
-            var dto = await _supabaseService.GetStudentAsync(CardSearchRegNumber.Trim());
-            if (dto != null)
+            if (result.Success)
             {
-                if (!string.IsNullOrEmpty(dto.CardId))
-                {
-                    PopupMessage = $"{dto.Name} already has a card assigned!";
-                    CardSearchStudent = null;
-                    return;
-                }
-                CardSearchStudent = new Student(dto.RegisterNumber, dto.Name, dto.Course, dto.Batch,
-                    dto.Department, dto.Specialization, dto.Section);
+                LateCount++;
+                _recentEntriesService.AddEntry(Student, Models.IdentificationMethod.NFC);
+                OnPropertyChanged(nameof(HasRecentEntries));
             }
-            else { CardSearchStudent = null; PopupMessage = "Student not found!"; }
-        }
-        catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
-        finally { IsLoading = false; }
-    }
-
-    [RelayCommand]
-    private async Task AssignCardAsync()
-    {
-        if (CardSearchStudent == null || string.IsNullOrEmpty(PendingCardId))
-        { PopupMessage = "No student or card selected."; return; }
-
-        IsLoading = true;
-        try
-        {
-            await _supabaseService.AssignCardIdAsync(CardSearchStudent.RegisterNumber, PendingCardId);
-            PopupMessage = $"Card assigned to {CardSearchStudent.Name}!";
-            IsCardRegistrationMode = false;
-            PendingCardId = "";
-            CardSearchRegNumber = "";
-            CardSearchStudent = null;
+            PopupMessage = result.Message;
         }
         catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
         finally { IsLoading = false; }
@@ -185,7 +125,7 @@ public partial class NfcScanViewModel : ObservableObject
 
     // --- NFC Tag Handlers ---
 
-    private async void OnNfcTagScanned(string uid)
+    private async void OnNfcTagScanned(string registerNumber)
     {
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
@@ -194,9 +134,8 @@ public partial class NfcScanViewModel : ObservableObject
             {
                 switch (CurrentMode)
                 {
-                    case NfcMode.Turbo: await HandleTurboScan(uid); break;
-                    case NfcMode.Register: await HandleRegisterScan(uid); break;
-                    default: await HandleRegularScan(uid); break;
+                    case NfcMode.Turbo: await HandleTurboScan(registerNumber); break;
+                    default: await HandleRegularScan(registerNumber); break;
                 }
             }
             catch (Exception ex) { PopupMessage = $"Error: {ex.Message}"; }
@@ -204,14 +143,12 @@ public partial class NfcScanViewModel : ObservableObject
         });
     }
 
-    private async Task HandleRegularScan(string uid)
+    private async Task HandleRegularScan(string registerNumber)
     {
-        var dto = await _supabaseService.GetStudentByCardIdAsync(uid);
+        var dto = await _supabaseService.GetStudentAsync(registerNumber);
         if (dto == null)
         {
-            await HandleRegisterScan(uid);
-            // Use SetMode instead of setting properties directly (Issue #13)
-            MainThread.BeginInvokeOnMainThread(() => SetMode("Register"));
+            PopupMessage = "Student not found for this card.";
             return;
         }
 
@@ -221,14 +158,12 @@ public partial class NfcScanViewModel : ObservableObject
         PopupMessage = "Student identified via NFC!";
     }
 
-    private async Task HandleTurboScan(string uid)
+    private async Task HandleTurboScan(string registerNumber)
     {
-        var dto = await _supabaseService.GetStudentByCardIdAsync(uid);
+        var dto = await _supabaseService.GetStudentAsync(registerNumber);
         if (dto == null)
         {
-            await HandleRegisterScan(uid);
-            // Use SetMode instead of setting properties directly (Issue #13)
-            MainThread.BeginInvokeOnMainThread(() => SetMode("Register"));
+            PopupMessage = "Student not found for this card.";
             return;
         }
 
@@ -236,25 +171,12 @@ public partial class NfcScanViewModel : ObservableObject
             dto.Department, dto.Specialization, dto.Section);
 
         var result = await _lateComingService.RecordLateAsync(student);
+        if (result.Success)
+            _recentEntriesService.AddEntry(student, Models.IdentificationMethod.NFC);
+        OnPropertyChanged(nameof(HasRecentEntries));
         PopupMessage = result.Success
             ? $"Late recorded for {dto.Name}!"
             : result.Message;
-    }
-
-    private async Task HandleRegisterScan(string uid)
-    {
-        var dto = await _supabaseService.GetStudentByCardIdAsync(uid);
-        if (dto != null)
-        {
-            PopupMessage = $"Card already assigned to {dto.Name} ({dto.RegisterNumber})";
-            return;
-        }
-
-        PendingCardId = uid;
-        CardSearchRegNumber = "";
-        CardSearchStudent = null;
-        IsCardRegistrationMode = true;
-        PopupMessage = "Unregistered card scanned. Search a student to assign.";
     }
 
     private void OnNfcError(string error)
@@ -291,7 +213,6 @@ public partial class NfcScanViewModel : ObservableObject
         NfcStatusText = CurrentMode switch
         {
             NfcMode.Turbo => "Turbo — Tap card for instant entry",
-            NfcMode.Register => "Register — Tap card to assign",
             _ => "NFC listening... Tap a card"
         };
     }

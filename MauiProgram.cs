@@ -35,6 +35,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<ThemeService>();
         builder.Services.AddSingleton<NfcService>();
         builder.Services.AddSingleton<LateComingService>();
+        builder.Services.AddSingleton<RecentEntriesService>();
 
         // Register ViewModels
         builder.Services.AddTransient<LoginViewModel>();
@@ -76,7 +77,6 @@ public static class MauiProgram
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Init error: {ex.Message}");
                 supabase.SignalInitComplete(ex);
                 return;
             }
