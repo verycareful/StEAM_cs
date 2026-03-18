@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## ⚠️ Project Status: No Longer in Active Development
+
+**This project was not pursued further due to lack of proper institutional support.** It is now open-source under the **Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0) License** to benefit the community.
+
+### Why This Repository is Valuable
+
+If you're building a .NET MAUI application that integrates **NFC scanning** and **camera/barcode scanning** simultaneously, this project demonstrates production-grade solutions to common threading and hardware lifecycle issues:
+
+- **NFC + Camera Race Condition Fix (v1.1.0)**: Samsung Android devices experienced a critical deadlock when `ZXingCameraView` destroyed its `SurfaceView` before the underlying `CameraCaptureSession` closed, which orphaned the session's `BufferQueue` and suppressed NFC polling system-wide for 30+ seconds. This is **solved** in this codebase with synchronous teardown handlers and a custom `MauiCameraViewHandler`.
+  
+- **Thread-Safety Improvements (v1.1.2)**: Comprehensive fixes for volatile field visibility, atomic operations, and `ObservableCollection` threading on multi-core ARM processors.
+
+Feel free to explore, learn from, and adapt this codebase for your own projects. See the [README](README.md) for full feature documentation.
+
+---
+
 ## [1.1.2] - 2026-03-01 - Second Audit Fixes
 
 ### Fixed

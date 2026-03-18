@@ -2,6 +2,11 @@
 
 A cross-platform .NET MAUI application for tracking student late arrivals on campus. Built with C# and Supabase for authentication, data storage, and real-time operations. Targets Android, iOS, Windows, and macOS from a single codebase.
 
+> **⚠️ Project Status**: This project was **not pursued further due to lack of proper institutional support**. It is now **open-source under the Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0) License** to benefit the open-source community.
+>
+> **For Developers**: If you're implementing **NFC + Camera integration in .NET MAUI**, this project contains **proven solutions** to the critical Samsung Android deadlock issue where simultaneous NFC and camera operations would freeze NFC polling for 30+ seconds. See [Release Notes (v1.1.0)](CHANGELOG.md) for details on the fix.
+>
+> **How to Find This**: Searching for *"NFC and camera not working together"*, *".NET MAUI NFC camera deadlock"*, or similar terms should surface this repository as a solution for anyone facing the same issue.
 
 ## Overview
 
@@ -253,4 +258,14 @@ If token-refresh issues occur on cold start on iOS, verify that `CustomSessionPe
 
 ## License
 
-This project is developed for internal use at SRM Institute of Science and Technology.
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License** (CC BY-NC 4.0).
+
+You are free to:
+- **Share** — copy and redistribute the material in any medium or format
+- **Adapt** — remix, transform, and build upon the material
+
+Under the following terms:
+- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made
+- **NonCommercial** — You may not use the material for commercial purposes
+
+See [LICENSE](LICENSE) for the full legal text.

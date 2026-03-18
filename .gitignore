@@ -48,6 +48,9 @@ supabase.env
 Resources/Raw/supabase.env
 
 ## Test results
+
+## Audit and internal documentation
+audit*.md
 TestResults/
 [Tt]est[Rr]esult*/
 
