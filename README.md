@@ -4,9 +4,10 @@
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
 [![License: Polyform NC](https://img.shields.io/badge/License-Polyform%20NC%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
 [![Status: Archived](https://img.shields.io/badge/Status-Archived-lightgrey?style=flat-square)](.)
+
 A cross-platform .NET MAUI application for tracking student late arrivals on campus. Built with C# and Supabase for authentication, data storage, and real-time operations. Targets Android, iOS, Windows, and macOS from a single codebase.
 
-> **⚠️ Project Status**: This project was **not pursued further due to lack of proper institutional support**. It is now **open-source under the Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0) License** to benefit the open-source community.
+> **⚠️ Project Status**: This project was **not pursued further due to lack of proper institutional support**. It is now **open-source under the Polyform Noncommercial License 1.0.0** to benefit the open-source community.
 >
 > **For Developers**: If you're implementing **NFC + Camera integration in .NET MAUI**, this project contains **proven solutions** to the critical Samsung Android deadlock issue where simultaneous NFC and camera operations would freeze NFC polling for 30+ seconds. See [Release Notes (v1.1.0)](CHANGELOG.md) for details on the fix.
 >
