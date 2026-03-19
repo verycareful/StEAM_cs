@@ -1,12 +1,8 @@
-﻿# StEAM -- Student Time and Attendance Manager
-[![C#](https://img.shields.io/badge/C%23-12.0-239120?style=flat-square&logo=csharp&logoColor=white)](https://docs.microsoft.com/en-us/dotnet/csharp/)
-[![.NET MAUI](https://img.shields.io/badge/.NET%20MAUI-9.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/apps/maui)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase&logoColor=white)](https://supabase.com/)
-[![License: Polyform NC](https://img.shields.io/badge/License-Polyform%20NC%201.0.0-blue.svg)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
-[![Status: Archived](https://img.shields.io/badge/Status-Archived-lightgrey?style=flat-square)](.)
+# StEAM -- Student Time and Attendance Manager
+
 A cross-platform .NET MAUI application for tracking student late arrivals on campus. Built with C# and Supabase for authentication, data storage, and real-time operations. Targets Android, iOS, Windows, and macOS from a single codebase.
 
-> **âš ï¸ Project Status**: This project was **not pursued further due to lack of proper institutional support**. It is now **open-source under the Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0) License** to benefit the open-source community.
+> **⚠️ Project Status**: This project was **not pursued further due to lack of proper institutional support**. It is now **open-source under the Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0) License** to benefit the open-source community.
 >
 > **For Developers**: If you're implementing **NFC + Camera integration in .NET MAUI**, this project contains **proven solutions** to the critical Samsung Android deadlock issue where simultaneous NFC and camera operations would freeze NFC polling for 30+ seconds. See [Release Notes (v1.1.0)](CHANGELOG.md) for details on the fix.
 >
@@ -16,7 +12,7 @@ A cross-platform .NET MAUI application for tracking student late arrivals on cam
 
 StEAM is used by university floor staff to record students who arrive late and by administrative staff to review, filter, and analyze late-arrival data across departments, courses, batches, and sections. Students are identified by register number entered manually, by tapping their NFC-enabled MIFARE Classic 4K ID card, or by scanning their ID card with the device camera.
 
-**Current Version:** 1.1.2 (2026-03-01) â€” See [CHANGELOG.md](CHANGELOG.md) for details.
+**Current Version:** 1.1.2 (2026-03-01) — See [CHANGELOG.md](CHANGELOG.md) for details.
 
 **Key Improvements in v1.1.2:**
 - Critical multi-core thread-safety fix for NFC tag reading (`volatile` keyword on `LastNfcTag`)
@@ -37,15 +33,15 @@ See the [CHANGELOG.md](CHANGELOG.md) for the complete list of fixes and improvem
 - Persistent session across cold starts using `SecureStorage` (Android Keystore-backed AES-256) with automatic token refresh on startup
 - Custom `IGotrueSessionPersistence` implementation that probes stored tokens before init and forces a `SetSession` exchange if the Supabase client does not self-restore
 
-### Floor Staff â€” Recording Late Arrivals
+### Floor Staff — Recording Late Arrivals
 - Search students by register number (manual text entry)
-- **NFC scanning (MIFARE Classic 4K)**: tap a student ID card to read Sector 0 Blocks 1â€“2; the register number is ASCII-decoded from the card data and validated with regex `^[A-Z]{2}\d{13}$`
+- **NFC scanning (MIFARE Classic 4K)**: tap a student ID card to read Sector 0 Blocks 1–2; the register number is ASCII-decoded from the card data and validated with regex `^[A-Z]{2}\d{13}$`
   - Two scan modes: **Regular** (identify then manually submit) and **Turbo** (auto-submit on tap)
 - **Camera scanning**: barcode scan (ZXing) or OCR capture (ML Kit) to read the register number from an ID card photo
-- **Recent Entries panel**: compact scrollable list of students successfully submitted during the current session, showing name, register number, submission time, and a colour-coded identification method badge (NFC Â· Barcode Â· Camera Â· Manual); cleared on app close or manual tap
+- **Recent Entries panel**: compact scrollable list of students successfully submitted during the current session, showing name, register number, submission time, and a colour-coded identification method badge (NFC · Barcode · Camera · Manual); cleared on app close or manual tap
 - Duplicate entry prevention: checks if the student has already been marked late for the current day
 
-### Staff Dashboard â€” Viewing and Filtering Records
+### Staff Dashboard — Viewing and Filtering Records
 - Filter late-coming records by date range, department, course, batch, section, and student name
 - Two viewing modes:
   - Student view: records grouped by student, showing total late count per student
@@ -247,8 +243,8 @@ $$;
 
 This function counts late arrivals for a student server-side (no row transfer), replacing the previous client-side approach. If the function does not exist, the client gracefully falls back to returning 0.
 
-### NFC â€” MIFARE Classic Block Reading
-NFC identification reads Sector 0, Blocks 1â€“2 directly from the student's MIFARE Classic 4K card. The register number is stored on the card as a null-terminated ASCII string. `Plugin.MAUI.NFC`'s `ITagInfo` abstraction does not expose the native Android `Tag` object needed for authenticated MIFARE reads; the workaround is a `static LastNfcTag` property on `MainActivity` populated in `OnNewIntent`, which `NfcService` reads before performing block I/O.
+### NFC — MIFARE Classic Block Reading
+NFC identification reads Sector 0, Blocks 1–2 directly from the student's MIFARE Classic 4K card. The register number is stored on the card as a null-terminated ASCII string. `Plugin.MAUI.NFC`'s `ITagInfo` abstraction does not expose the native Android `Tag` object needed for authenticated MIFARE reads; the workaround is a `static LastNfcTag` property on `MainActivity` populated in `OnNewIntent`, which `NfcService` reads before performing block I/O.
 
 ### Camera2 and NFC Hardware Deadlocks
 On some Android devices (specifically Samsung), the `CameraService` suppresses NFC polling whenever a `CameraCaptureSession` is active. To prevent the NFC adapter from entering a locked "abandoned buffer" state due to race conditions during page navigation, StEAM uses a custom `MauiCameraViewHandler` (found in `Platforms/Android/`). 
@@ -262,14 +258,14 @@ If token-refresh issues occur on cold start on iOS, verify that `CustomSessionPe
 
 ## License
 
-Copyright © 2026 Sricharan Suresh (github.com/verycareful)
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License** (CC BY-NC 4.0).
 
-This project is licensed under the **[Polyform Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/)**.
-You may use, copy, and modify this software for non-commercial purposes only.
-Commercial use of any kind is prohibited without explicit written permission from the author.
+You are free to:
+- **Share** — copy and redistribute the material in any medium or format
+- **Adapt** — remix, transform, and build upon the material
 
-See the [LICENSE](LICENSE) file for the full license text, or visit
-[https://polyformproject.org/licenses/noncommercial/1.0.0/](https://polyformproject.org/licenses/noncommercial/1.0.0/).
+Under the following terms:
+- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made
+- **NonCommercial** — You may not use the material for commercial purposes
 
-For commercial licensing inquiries, contact [sricharanc03@gmail.com](mailto:sricharanc03@gmail.com).
-
+See [LICENSE](LICENSE) for the full legal text.
